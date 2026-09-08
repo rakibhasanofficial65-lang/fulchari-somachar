@@ -1,0 +1,80 @@
+RewriteEngine On
+
+# --------------------------------------------------
+# Project Base
+# --------------------------------------------------
+
+RewriteBase /fulchari-somachar/
+
+
+# --------------------------------------------------
+# Don't rewrite existing files/folders
+# --------------------------------------------------
+
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+
+# --------------------------------------------------
+# Clean News URL
+# /news/abc-news
+# -> news.php?slug=abc-news
+# --------------------------------------------------
+
+RewriteRule ^news/([^/]+)/?$ news.php?slug=$1 [L,QSA]
+
+
+# --------------------------------------------------
+# Clean Category URL
+# /category/fulchari
+# -> category.php?slug=fulchari
+# --------------------------------------------------
+
+RewriteRule ^category/([^/]+)/?$ category.php?slug=$1 [L,QSA]
+
+
+# --------------------------------------------------
+# Search URL
+# /search/keyword
+# -> search.php?q=keyword
+# --------------------------------------------------
+
+RewriteRule ^search/([^/]+)/?$ search.php?q=$1 [L,QSA]
+
+
+# --------------------------------------------------
+# E-Paper URL
+# /epaper
+# -> epaper.php
+# --------------------------------------------------
+
+RewriteRule ^epaper/?$ epaper.php [L,QSA]
+
+RewriteRule ^sitemap\.xml$ sitemap.php [L,QSA]
+# --------------------------------------------------
+# Disable Directory Listing
+# --------------------------------------------------
+
+Options -Indexes
+
+
+# --------------------------------------------------
+# Protect sensitive files
+# --------------------------------------------------
+
+<FilesMatch "^(database\.php|config\.php|\.env)$">
+    Require all denied
+</FilesMatch>
+
+
+# --------------------------------------------------
+# Protect .htaccess itself
+# --------------------------------------------------
+
+<Files ".htaccess">
+    Require all denied
+</Files>
+
+ErrorDocument 404 /fulchari-somachar/404.php
+
