@@ -52,6 +52,7 @@ RewriteRule ^search/([^/]+)/?$ search.php?q=$1 [L,QSA]
 RewriteRule ^epaper/?$ epaper.php [L,QSA]
 
 RewriteRule ^sitemap\.xml$ sitemap.php [L,QSA]
+
 # --------------------------------------------------
 # Disable Directory Listing
 # --------------------------------------------------
