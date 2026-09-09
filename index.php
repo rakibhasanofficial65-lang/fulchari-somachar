@@ -23,6 +23,14 @@ $ogImage = site_url("assets/logo.png");
 
 
 // =====================================================
+// SOCIAL
+// =====================================================
+
+$facebookPage =
+    "https://www.facebook.com/profile.php?id=61593835547926";
+
+
+// =====================================================
 // GET PUBLISHED NEWS
 // =====================================================
 
@@ -53,31 +61,116 @@ require_once __DIR__ . "/includes/header.php";
 ?>
 
 
-<!-- =====================================================
-     MAIN CONTENT
-===================================================== -->
-
 <main class="main-content">
 
     <div class="container">
 
+
+        <!-- =================================================
+             FACEBOOK / SOCIAL HERO
+        ================================================== -->
+
+        <section class="facebook-premium-banner">
+
+            <div class="facebook-banner-content">
+
+                <div class="facebook-banner-logo">
+
+                    <img
+                        src="<?php echo e(
+                            site_url("assets/logo.png")
+                        ); ?>"
+                        alt="<?php echo e(SITE_NAME); ?>"
+                    >
+
+                </div>
+
+
+                <div class="facebook-banner-text">
+
+                    <span class="facebook-small-text">
+                        আমাদের সঙ্গে যুক্ত থাকুন
+                    </span>
+
+                    <h1>
+                        <?php echo e(SITE_NAME); ?>
+                    </h1>
+
+                    <p>
+                        সর্বশেষ সংবাদ, গুরুত্বপূর্ণ আপডেট
+                        ও এলাকার খবর পেতে আমাদের Facebook
+                        Page-এ যুক্ত থাকুন।
+                    </p>
+
+                </div>
+
+
+                <div class="facebook-banner-action">
+
+                    <a
+                        href="<?php echo e($facebookPage); ?>"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="facebook-follow-button"
+                    >
+
+                        <span class="facebook-icon">
+                            f
+                        </span>
+
+                        <span>
+                            Facebook Page
+                        </span>
+
+                        <span class="facebook-arrow">
+                            ↗
+                        </span>
+
+                    </a>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =================================================
+             PREMIUM NEWS SECTION
+        ================================================== -->
+
         <section class="premium-news-section">
 
 
-            <!-- =================================================
-                 SECTION HEADER
-            ================================================= -->
-
             <div class="premium-section-title">
 
-                <h2>
-                    সর্বশেষ সংবাদ
-                </h2>
+                <div class="premium-title-left">
+
+                    <span class="premium-title-line"></span>
+
+                    <div>
+
+                        <span class="premium-kicker">
+                            BREAKING & LATEST
+                        </span>
+
+                        <h2>
+                            সর্বশেষ সংবাদ
+                        </h2>
+
+                    </div>
+
+                </div>
+
 
                 <a
-                    href="<?php echo e(site_url("search")); ?>"
+                    href="<?php echo e(
+                        site_url("search")
+                    ); ?>"
+                    class="premium-see-all"
                 >
-                    সব সংবাদ →
+                    সব সংবাদ
+                    <span>→</span>
                 </a>
 
             </div>
@@ -87,31 +180,48 @@ require_once __DIR__ . "/includes/header.php";
 
 
                 <!-- =================================================
-                     PREMIUM NEWS GRID
-                ================================================= -->
+                     PREMIUM PHOTO GRID
+                ================================================== -->
 
                 <div class="premium-news-grid">
 
 
-                    <?php foreach ($latestNews as $index => $news): ?>
+                    <?php foreach (
+                        $latestNews
+                        as $index => $news
+                    ): ?>
 
 
-                        <article class="premium-photo-card">
+                        <article
+                            class="
+                                premium-photo-card
+                                <?php
+                                echo $index === 0
+                                    ? "premium-photo-card-featured"
+                                    : "";
+                                ?>
+                            "
+                        >
 
 
                             <!-- =====================================
-                                 IMAGE AREA
+                                 IMAGE
                             ====================================== -->
 
                             <div class="photo-card-image">
 
 
-                                <?php if (!empty($news["image"])): ?>
+                                <?php if (
+                                    !empty($news["image"])
+                                ): ?>
 
                                     <a
                                         href="<?php echo e(
-                                            news_url($news["slug"])
+                                            news_url(
+                                                $news["slug"]
+                                            )
                                         ); ?>"
+                                        class="photo-card-image-link"
                                         aria-label="<?php echo e(
                                             $news["title"]
                                         ); ?>"
@@ -119,7 +229,9 @@ require_once __DIR__ . "/includes/header.php";
 
                                         <img
                                             src="<?php echo e(
-                                                image_url($news["image"])
+                                                image_url(
+                                                    $news["image"]
+                                                )
                                             ); ?>"
                                             alt="<?php echo e(
                                                 $news["title"]
@@ -136,11 +248,22 @@ require_once __DIR__ . "/includes/header.php";
 
                                 <?php else: ?>
 
-                                    <div class="photo-card-no-image">
+                                    <div
+                                        class="
+                                            photo-card-no-image
+                                        "
+                                    >
 
-                                        <span>
-                                            <?php echo e(SITE_NAME); ?>
-                                        </span>
+                                        <img
+                                            src="<?php echo e(
+                                                site_url(
+                                                    "assets/logo.png"
+                                                )
+                                            ); ?>"
+                                            alt="<?php echo e(
+                                                SITE_NAME
+                                            ); ?>"
+                                        >
 
                                     </div>
 
@@ -148,19 +271,38 @@ require_once __DIR__ . "/includes/header.php";
 
 
                                 <!-- =================================
-                                     PREMIUM LOGO
+                                     IMAGE OVERLAY
                                 ================================== -->
 
-                                <div class="photo-card-logo">
+                                <div
+                                    class="
+                                        photo-card-gradient
+                                    "
+                                ></div>
+
+
+                                <!-- =================================
+                                     TOP BRAND
+                                ================================== -->
+
+                                <div class="photo-card-brand">
 
                                     <img
                                         src="<?php echo e(
-                                            site_url("assets/logo.png")
+                                            site_url(
+                                                "assets/logo.png"
+                                            )
                                         ); ?>"
-                                        alt="<?php echo e(SITE_NAME); ?>"
-                                        loading="lazy"
-                                        decoding="async"
+                                        alt="<?php echo e(
+                                            SITE_NAME
+                                        ); ?>"
                                     >
+
+                                    <span>
+                                        <?php echo e(
+                                            SITE_NAME
+                                        ); ?>
+                                    </span>
 
                                 </div>
 
@@ -169,19 +311,29 @@ require_once __DIR__ . "/includes/header.php";
                                      CATEGORY
                                 ================================== -->
 
-                                <?php if (!empty($news["category_name"])): ?>
+                                <?php if (
+                                    !empty(
+                                        $news["category_name"]
+                                    )
+                                ): ?>
 
                                     <a
                                         href="<?php echo e(
                                             category_url(
-                                                $news["category_slug"]
+                                                $news[
+                                                    "category_slug"
+                                                ]
                                             )
                                         ); ?>"
-                                        class="photo-card-category"
+                                        class="
+                                            photo-card-category
+                                        "
                                     >
 
                                         <?php echo e(
-                                            $news["category_name"]
+                                            $news[
+                                                "category_name"
+                                            ]
                                         ); ?>
 
                                     </a>
@@ -189,25 +341,120 @@ require_once __DIR__ . "/includes/header.php";
                                 <?php endif; ?>
 
 
+                                <!-- =================================
+                                     FEATURED NUMBER
+                                ================================== -->
+
+                                <div class="photo-card-number">
+
+                                    <?php echo str_pad(
+                                        $index + 1,
+                                        2,
+                                        "0",
+                                        STR_PAD_LEFT
+                                    ); ?>
+
+                                </div>
+
+
+                                <!-- =================================
+                                     IMAGE HEADLINE
+                                ================================== -->
+
+                                <a
+                                    href="<?php echo e(
+                                        news_url(
+                                            $news["slug"]
+                                        )
+                                    ); ?>"
+                                    class="
+                                        photo-card-overlay-title
+                                    "
+                                >
+
+                                    <?php echo e(
+                                        $news["title"]
+                                    ); ?>
+
+                                </a>
+
+
                             </div>
 
 
-                            <!-- =====================================
+                            <!-- =================================================
                                  CARD CONTENT
-                            ====================================== -->
+                            ================================================== -->
 
                             <div class="photo-card-content">
 
 
-                                <!-- =================================
-                                     TITLE
-                                ================================== -->
+                                <div class="photo-card-content-top">
+
+
+                                    <?php if (
+                                        !empty(
+                                            $news["category_name"]
+                                        )
+                                    ): ?>
+
+                                        <a
+                                            href="<?php echo e(
+                                                category_url(
+                                                    $news[
+                                                        "category_slug"
+                                                    ]
+                                                )
+                                            ); ?>"
+                                            class="
+                                                card-category-link
+                                            "
+                                        >
+
+                                            <?php echo e(
+                                                $news[
+                                                    "category_name"
+                                                ]
+                                            ); ?>
+
+                                        </a>
+
+                                    <?php endif; ?>
+
+
+                                    <?php if (
+                                        !empty(
+                                            $news["published_at"]
+                                        )
+                                    ): ?>
+
+                                        <time>
+
+                                            <?php echo e(
+                                                format_date_bn(
+                                                    $news[
+                                                        "published_at"
+                                                    ]
+                                                )
+                                            ); ?>
+
+                                        </time>
+
+                                    <?php endif; ?>
+
+
+                                </div>
+
+
+                                <!-- TITLE -->
 
                                 <h3 class="photo-card-title">
 
                                     <a
                                         href="<?php echo e(
-                                            news_url($news["slug"])
+                                            news_url(
+                                                $news["slug"]
+                                            )
                                         ); ?>"
                                     >
 
@@ -220,18 +467,24 @@ require_once __DIR__ . "/includes/header.php";
                                 </h3>
 
 
-                                <!-- =================================
-                                     HEADLINE
-                                ================================== -->
+                                <!-- HEADLINE -->
 
-                                <?php if (!empty($news["headline"])): ?>
+                                <?php if (
+                                    !empty(
+                                        $news["headline"]
+                                    )
+                                ): ?>
 
-                                    <p class="photo-card-headline">
+                                    <p
+                                        class="
+                                            photo-card-headline
+                                        "
+                                    >
 
                                         <?php echo e(
                                             news_excerpt(
                                                 $news["headline"],
-                                                150
+                                                145
                                             )
                                         ); ?>
 
@@ -240,65 +493,58 @@ require_once __DIR__ . "/includes/header.php";
                                 <?php endif; ?>
 
 
-                                <!-- =================================
-                                     META
-                                ================================== -->
+                                <!-- META -->
 
                                 <div class="photo-card-meta">
 
 
-                                    <?php if (!empty($news["reporter"])): ?>
+                                    <span>
 
-                                        <span class="photo-card-reporter">
+                                        <?php if (
+                                            !empty(
+                                                $news["reporter"]
+                                            )
+                                        ): ?>
 
                                             রিপোর্ট:
                                             <?php echo e(
-                                                $news["reporter"]
+                                                $news[
+                                                    "reporter"
+                                                ]
                                             ); ?>
 
-                                        </span>
-
-                                    <?php else: ?>
-
-                                        <span>
-                                            <?php echo e(SITE_NAME); ?>
-                                        </span>
-
-                                    <?php endif; ?>
-
-
-                                    <?php if (
-                                        !empty($news["published_at"])
-                                    ): ?>
-
-                                        <span>
+                                        <?php else: ?>
 
                                             <?php echo e(
-                                                format_date_bn(
-                                                    $news["published_at"]
-                                                )
+                                                SITE_NAME
                                             ); ?>
 
-                                        </span>
+                                        <?php endif; ?>
 
-                                    <?php endif; ?>
+                                    </span>
 
 
                                 </div>
 
 
-                                <!-- =================================
-                                     READ MORE
-                                ================================== -->
+                                <!-- READ MORE -->
 
                                 <a
                                     href="<?php echo e(
-                                        news_url($news["slug"])
+                                        news_url(
+                                            $news["slug"]
+                                        )
                                     ); ?>"
-                                    class="photo-card-read"
+                                    class="
+                                        photo-card-read
+                                    "
                                 >
 
-                                    বিস্তারিত পড়ুন →
+                                    বিস্তারিত পড়ুন
+
+                                    <span>
+                                        →
+                                    </span>
 
                                 </a>
 
@@ -319,10 +565,29 @@ require_once __DIR__ . "/includes/header.php";
 
 
                 <!-- =================================================
-                     NO NEWS STATE
+                     EMPTY STATE
                 ================================================== -->
 
                 <div class="premium-welcome">
+
+                    <div class="premium-welcome-logo">
+
+                        <img
+                            src="<?php echo e(
+                                site_url(
+                                    "assets/logo.png"
+                                )
+                            ); ?>"
+                            alt="<?php echo e(
+                                SITE_NAME
+                            ); ?>"
+                        >
+
+                    </div>
+
+                    <span>
+                        <?php echo e(SITE_NAME); ?>
+                    </span>
 
                     <h1>
                         এখনো কোনো সংবাদ প্রকাশিত হয়নি
@@ -330,10 +595,20 @@ require_once __DIR__ . "/includes/header.php";
 
                     <p>
                         Admin Panel থেকে সংবাদ Publish করলে
-                        এখানে Automatic Premium Photo Card তৈরি হবে।
+                        এখানে Automatic Premium Photo Card
+                        তৈরি হবে।
                     </p>
 
-            
+                    <a
+                        href="<?php echo e(
+                            site_url(
+                                "admin/login.php"
+                            )
+                        ); ?>"
+                        class="premium-admin-button"
+                    >
+                        Admin Panel
+                    </a>
 
                 </div>
 
@@ -343,16 +618,57 @@ require_once __DIR__ . "/includes/header.php";
 
         </section>
 
+
+        <!-- =================================================
+             FACEBOOK BOTTOM CTA
+        ================================================== -->
+
+        <section class="facebook-bottom-card">
+
+            <div class="facebook-bottom-inner">
+
+                <div class="facebook-bottom-icon">
+                    f
+                </div>
+
+                <div class="facebook-bottom-text">
+
+                    <span>
+                        FOLLOW US ON FACEBOOK
+                    </span>
+
+                    <strong>
+                        <?php echo e(SITE_NAME); ?>
+                    </strong>
+
+                    <p>
+                        প্রতিদিনের সর্বশেষ খবর ও আপডেট
+                        সরাসরি পেতে আমাদের Facebook Page
+                        Follow করুন।
+                    </p>
+
+                </div>
+
+                <a
+                    href="<?php echo e($facebookPage); ?>"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="facebook-bottom-button"
+                >
+                    Follow Page →
+                </a>
+
+            </div>
+
+        </section>
+
+
     </div>
 
 </main>
 
 
 <?php
-
-// =====================================================
-// FOOTER
-// =====================================================
 
 require_once __DIR__ . "/includes/footer.php";
 
