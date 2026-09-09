@@ -5,7 +5,6 @@ session_start();
 require_once dirname(__DIR__) . "/config/config.php";
 require_once dirname(__DIR__) . "/config/database.php";
 
-
 // ================= AUTH CHECK =================
 
 if (!isset($_SESSION["admin_id"])) {
