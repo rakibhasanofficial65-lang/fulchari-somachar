@@ -72,7 +72,17 @@ require_once dirname(__DIR__) . "/config/config.php";
                 <a href="<?php echo e(SITE_URL . "/admin/login.php"); ?>">
                     Admin Login
                 </a>
-
+                <a
+    href="https://www.facebook.com/profile.php?id=61593835547926"
+    target="_blank"
+    rel="noopener noreferrer"
+    class="footer-facebook-link"
+>
+    <span class="footer-facebook-icon">f</span>
+    <span>আমাদের Facebook Page</span>
+    <span>↗</span>
+                    
+</a>
             </div>
 
         </div>
@@ -185,6 +195,39 @@ require_once dirname(__DIR__) . "/config/config.php";
         width: 190px;
     }
 
+}
+    .footer-facebook-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 15px;
+    color: #fff;
+    background: #1877f2;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 700;
+    transition: 0.25s ease;
+}
+
+.footer-facebook-link:hover {
+    color: #fff;
+    background: #0d6fe8;
+    transform: translateY(-2px);
+}
+
+.footer-facebook-icon {
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #fff;
+    color: #1877f2;
+    font-family: Arial, sans-serif;
+    font-weight: 900;
+    font-size: 17px;
 }
 
 </style>
