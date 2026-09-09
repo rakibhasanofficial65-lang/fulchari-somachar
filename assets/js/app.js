@@ -31,40 +31,25 @@ document.addEventListener("DOMContentLoaded", function () {
 
 /* =========================================================
    CONFIRM ACTIONS
-   Delete / Logout / Important Actions
 ========================================================= */
 
 function initConfirmActions() {
 
     const confirmElements =
-        document.querySelectorAll(
-            "[data-confirm]"
-        );
-
+        document.querySelectorAll("[data-confirm]");
 
     confirmElements.forEach(function (element) {
 
-        element.addEventListener(
-            "click",
-            function (event) {
+        element.addEventListener("click", function (event) {
 
-                const message =
-                    element.getAttribute(
-                        "data-confirm"
-                    );
+            const message =
+                element.getAttribute("data-confirm");
 
-
-                if (
-                    message &&
-                    !window.confirm(message)
-                ) {
-
-                    event.preventDefault();
-
-                }
-
+            if (message && !window.confirm(message)) {
+                event.preventDefault();
             }
-        );
+
+        });
 
     });
 
@@ -73,7 +58,6 @@ function initConfirmActions() {
 
 /* =========================================================
    IMAGE PREVIEW
-   Admin Add/Edit News
 ========================================================= */
 
 function initImagePreview() {
@@ -83,85 +67,58 @@ function initImagePreview() {
             'input[type="file"][data-preview]'
         );
 
-
     imageInputs.forEach(function (input) {
 
-        input.addEventListener(
-            "change",
-            function () {
+        input.addEventListener("change", function () {
 
-                const previewId =
-                    input.getAttribute(
-                        "data-preview"
-                    );
+            const previewId =
+                input.getAttribute("data-preview");
 
-
-                if (!previewId) {
-                    return;
-                }
-
-
-                const preview =
-                    document.getElementById(
-                        previewId
-                    );
-
-
-                if (!preview) {
-                    return;
-                }
-
-
-                const file =
-                    input.files &&
-                    input.files[0];
-
-
-                if (!file) {
-
-                    preview.src = "";
-
-                    preview.classList.add(
-                        "hidden"
-                    );
-
-                    return;
-                }
-
-
-                if (!file.type.startsWith("image/")) {
-
-                    preview.src = "";
-
-                    preview.classList.add(
-                        "hidden"
-                    );
-
-                    return;
-                }
-
-
-                const reader =
-                    new FileReader();
-
-
-                reader.onload =
-                    function (event) {
-
-                        preview.src =
-                            event.target.result;
-
-                        preview.classList.remove(
-                            "hidden"
-                        );
-
-                    };
-
-
-                reader.readAsDataURL(file);
-
+            if (!previewId) {
+                return;
             }
-        );
+
+            const preview =
+                document.getElementById(previewId);
+
+            if (!preview) {
+                return;
+            }
+
+            const file =
+                input.files && input.files[0];
+
+            if (!file) {
+
+                preview.src = "";
+
+                preview.classList.add("hidden");
+
+                return;
+            }
+
+            if (!file.type.startsWith("image/")) {
+
+                preview.src = "";
+
+                preview.classList.add("hidden");
+
+                return;
+            }
+
+            const reader = new FileReader();
+
+            reader.onload = function (event) {
+
+                preview.src = event.target.result;
+
+                preview.classList.remove("hidden");
+
+            };
+
+            reader.readAsDataURL(file);
+
+        });
 
     });
 
@@ -179,28 +136,22 @@ function initVercelBlobUpload() {
             'input[type="file"][data-blob-upload]'
         );
 
-
     if (!imageInputs.length) {
         return;
     }
 
-
     imageInputs.forEach(function (input) {
 
-        const form =
-            input.closest("form");
-
+        const form = input.closest("form");
 
         if (!form) {
             return;
         }
 
-
         let blobUrlInput =
             form.querySelector(
                 'input[name="image_url"]'
             );
-
 
         if (!blobUrlInput) {
 
@@ -208,20 +159,17 @@ function initVercelBlobUpload() {
                 document.createElement("input");
 
             blobUrlInput.type = "hidden";
+
             blobUrlInput.name = "image_url";
 
-            form.appendChild(
-                blobUrlInput
-            );
+            form.appendChild(blobUrlInput);
 
         }
-
 
         let statusElement =
             form.querySelector(
                 "[data-upload-status]"
             );
-
 
         if (!statusElement) {
 
@@ -242,12 +190,10 @@ function initVercelBlobUpload() {
 
         }
 
-
         let progressElement =
             form.querySelector(
                 "[data-upload-progress]"
             );
-
 
         if (!progressElement) {
 
@@ -260,13 +206,13 @@ function initVercelBlobUpload() {
             );
 
             progressElement.max = 100;
+
             progressElement.value = 0;
 
             progressElement.className =
                 "blob-upload-progress";
 
-            progressElement.style.display =
-                "none";
+            progressElement.style.display = "none";
 
             input.parentNode.appendChild(
                 progressElement
@@ -274,153 +220,169 @@ function initVercelBlobUpload() {
 
         }
 
-
         let submitButton =
             form.querySelector(
                 'button[type="submit"], input[type="submit"]'
             );
 
-
         let uploadPromise = null;
 
 
-        input.addEventListener(
-            "change",
-            function () {
+        /* =====================================================
+           FILE SELECT
+        ===================================================== */
 
-                const file =
-                    input.files &&
-                    input.files[0];
+        input.addEventListener("change", function () {
 
+            const file =
+                input.files && input.files[0];
 
-                blobUrlInput.value = "";
+            blobUrlInput.value = "";
 
-
-                if (!file) {
-
-                    statusElement.textContent = "";
-
-                    progressElement.style.display =
-                        "none";
-
-                    progressElement.value = 0;
-
-                    return;
-
-                }
+            uploadPromise = null;
 
 
-                if (
-                    file.type !== "image/jpeg" &&
-                    file.type !== "image/png" &&
-                    file.type !== "image/webp"
-                ) {
+            if (!file) {
 
-                    statusElement.textContent =
-                        "শুধু JPG, PNG অথবা WebP ছবি ব্যবহার করুন।";
+                statusElement.textContent = "";
 
-                    statusElement.className =
-                        "blob-upload-status upload-error";
-
-                    input.value = "";
-
-                    return;
-
-                }
-
-
-                const maxSize =
-                    40 * 1024 * 1024;
-
-
-                if (file.size > maxSize) {
-
-                    statusElement.textContent =
-                        "ছবির সর্বোচ্চ আকার 40MB হতে পারে।";
-
-                    statusElement.className =
-                        "blob-upload-status upload-error";
-
-                    input.value = "";
-
-                    return;
-
-                }
-
-
-                statusElement.textContent =
-                    "ছবি প্রস্তুত হচ্ছে...";
-
-                statusElement.className =
-                    "blob-upload-status upload-processing";
-
-
-                progressElement.style.display =
-                    "block";
+                progressElement.style.display = "none";
 
                 progressElement.value = 0;
 
-
-                uploadPromise =
-                    uploadToVercelBlob(
-                        file,
-                        statusElement,
-                        progressElement,
-                        function (url) {
-
-                            blobUrlInput.value =
-                                url;
-
-                        }
-                    );
-
+                return;
             }
-        );
 
+
+            /* =================================================
+               FILE TYPE
+            ================================================= */
+
+            if (
+                file.type !== "image/jpeg" &&
+                file.type !== "image/png" &&
+                file.type !== "image/webp"
+            ) {
+
+                statusElement.textContent =
+                    "শুধু JPG, PNG অথবা WebP ছবি ব্যবহার করুন।";
+
+                statusElement.className =
+                    "blob-upload-status upload-error";
+
+                input.value = "";
+
+                return;
+            }
+
+
+            /* =================================================
+               FILE SIZE
+            ================================================= */
+
+            const maxSize =
+                40 * 1024 * 1024;
+
+            if (file.size > maxSize) {
+
+                statusElement.textContent =
+                    "ছবির সর্বোচ্চ আকার 40MB হতে পারে।";
+
+                statusElement.className =
+                    "blob-upload-status upload-error";
+
+                input.value = "";
+
+                return;
+            }
+
+
+            /* =================================================
+               START UPLOAD
+            ================================================= */
+
+            statusElement.textContent =
+                "ছবি Upload হচ্ছে...";
+
+            statusElement.className =
+                "blob-upload-status upload-processing";
+
+            progressElement.style.display = "block";
+
+            progressElement.value = 0;
+
+
+            uploadPromise =
+                uploadToVercelBlob(
+                    file,
+                    statusElement,
+                    progressElement,
+                    function (url) {
+
+                        blobUrlInput.value = url;
+
+                        console.log(
+                            "Vercel Blob URL:",
+                            url
+                        );
+
+                    }
+                );
+
+        });
+
+
+        /* =====================================================
+           FORM SUBMIT
+        ===================================================== */
 
         form.addEventListener(
             "submit",
             async function (event) {
 
                 const file =
-                    input.files &&
-                    input.files[0];
+                    input.files && input.files[0];
 
 
+                /*
+                 * No new file selected.
+                 * Allow normal form submission.
+                 */
                 if (!file) {
                     return;
                 }
 
 
-                if (
-                    blobUrlInput.value
-                ) {
-
+                /*
+                 * Blob URL already exists.
+                 */
+                if (blobUrlInput.value) {
                     return;
-
                 }
 
 
+                /*
+                 * Prevent PHP form submission
+                 * until Blob upload finishes.
+                 */
                 event.preventDefault();
 
 
                 if (!uploadPromise) {
 
                     statusElement.textContent =
-                        "ছবি upload শুরু করা যাচ্ছে না।";
+                        "ছবি Upload শুরু করা যাচ্ছে না।";
 
                     statusElement.className =
                         "blob-upload-status upload-error";
 
                     return;
-
                 }
 
 
                 if (submitButton) {
 
-                    submitButton.disabled =
-                        true;
+                    submitButton.disabled = true;
 
                     submitButton.dataset.originalText =
                         submitButton.tagName === "INPUT"
@@ -449,6 +411,10 @@ function initVercelBlobUpload() {
 
                     await uploadPromise;
 
+
+                    /*
+                     * Upload completed but URL missing.
+                     */
                     if (!blobUrlInput.value) {
 
                         throw new Error(
@@ -458,6 +424,12 @@ function initVercelBlobUpload() {
                     }
 
 
+                    console.log(
+                        "Final image_url:",
+                        blobUrlInput.value
+                    );
+
+
                     statusElement.textContent =
                         "ছবি সফলভাবে Upload হয়েছে।";
 
@@ -465,7 +437,11 @@ function initVercelBlobUpload() {
                         "blob-upload-status upload-success";
 
 
-                    form.submit();
+                    /*
+                     * Submit form without triggering
+                     * the submit listener again.
+                     */
+                    HTMLFormElement.prototype.submit.call(form);
 
                 } catch (error) {
 
@@ -473,7 +449,6 @@ function initVercelBlobUpload() {
                         "Vercel Blob upload error:",
                         error
                     );
-
 
                     statusElement.textContent =
                         "ছবি Upload করা যায়নি। আবার চেষ্টা করুন।";
@@ -484,8 +459,7 @@ function initVercelBlobUpload() {
 
                     if (submitButton) {
 
-                        submitButton.disabled =
-                            false;
+                        submitButton.disabled = false;
 
                         restoreSubmitButton(
                             submitButton
@@ -517,8 +491,9 @@ async function uploadToVercelBlob(
     try {
 
         /*
-         * Load the Vercel Blob client SDK
-         * directly in the browser.
+         * IMPORTANT:
+         * This MUST be a real JavaScript URL.
+         * Do NOT use Markdown link syntax here.
          */
 
         const blobModule =
@@ -531,9 +506,7 @@ async function uploadToVercelBlob(
             blobModule.upload;
 
 
-        if (
-            typeof upload !== "function"
-        ) {
+        if (typeof upload !== "function") {
 
             throw new Error(
                 "Vercel Blob client library পাওয়া যায়নি।"
@@ -546,6 +519,22 @@ async function uploadToVercelBlob(
             "ছবি Upload হচ্ছে...";
 
 
+        /*
+         * Use the current Vercel domain.
+         */
+        const handleUploadUrl =
+            new URL(
+                "/api/upload",
+                window.location.origin
+            ).toString();
+
+
+        console.log(
+            "Blob upload endpoint:",
+            handleUploadUrl
+        );
+
+
         const blob =
             await upload(
                 file.name,
@@ -554,7 +543,7 @@ async function uploadToVercelBlob(
                     access: "public",
 
                     handleUploadUrl:
-                        "/api/upload",
+                        handleUploadUrl,
 
                     multipart: true,
 
@@ -566,10 +555,8 @@ async function uploadToVercelBlob(
                                     event.percentage || 0
                                 );
 
-
                             progressElement.value =
                                 percentage;
-
 
                             statusElement.textContent =
                                 "ছবি Upload হচ্ছে... " +
@@ -581,6 +568,12 @@ async function uploadToVercelBlob(
                         }
                 }
             );
+
+
+        console.log(
+            "Vercel Blob response:",
+            blob
+        );
 
 
         if (
@@ -595,18 +588,16 @@ async function uploadToVercelBlob(
         }
 
 
-        onSuccess(
-            blob.url
-        );
+        /*
+         * Save Blob URL into hidden input.
+         */
+        onSuccess(blob.url);
 
 
-        progressElement.value =
-            100;
-
+        progressElement.value = 100;
 
         statusElement.textContent =
             "ছবি সফলভাবে Upload হয়েছে।";
-
 
         statusElement.className =
             "blob-upload-status upload-success";
@@ -645,9 +636,7 @@ async function uploadToVercelBlob(
    RESTORE SUBMIT BUTTON
 ========================================================= */
 
-function restoreSubmitButton(
-    button
-) {
+function restoreSubmitButton(button) {
 
     if (
         !button ||
@@ -655,7 +644,6 @@ function restoreSubmitButton(
     ) {
 
         return;
-
     }
 
 
@@ -689,7 +677,6 @@ function initAutoHideAlerts() {
         document.querySelectorAll(
             ".alert[data-auto-hide]"
         );
-
 
     alerts.forEach(function (alert) {
 
@@ -731,7 +718,6 @@ function initSearchForm() {
             ".search-form"
         );
 
-
     forms.forEach(function (form) {
 
         form.addEventListener(
@@ -743,15 +729,12 @@ function initSearchForm() {
                         'input[name="q"]'
                     );
 
-
                 if (!input) {
                     return;
                 }
 
-
                 const value =
                     input.value.trim();
-
 
                 if (value === "") {
 
@@ -763,9 +746,7 @@ function initSearchForm() {
 
                 }
 
-
-                input.value =
-                    value;
+                input.value = value;
 
             }
         );
@@ -786,7 +767,6 @@ function initSmoothScroll() {
             'a[href^="#"]'
         );
 
-
     links.forEach(function (link) {
 
         link.addEventListener(
@@ -794,10 +774,7 @@ function initSmoothScroll() {
             function (event) {
 
                 const targetId =
-                    link.getAttribute(
-                        "href"
-                    );
-
+                    link.getAttribute("href");
 
                 if (
                     !targetId ||
@@ -808,20 +785,16 @@ function initSmoothScroll() {
 
                 }
 
-
                 const target =
                     document.querySelector(
                         targetId
                     );
 
-
                 if (!target) {
                     return;
                 }
 
-
                 event.preventDefault();
-
 
                 target.scrollIntoView({
                     behavior: "smooth",
@@ -838,7 +811,6 @@ function initSmoothScroll() {
 
 /* =========================================================
    MOBILE MENU
-   Compatible with future toggle button
 ========================================================= */
 
 function initMobileMenu() {
@@ -848,17 +820,14 @@ function initMobileMenu() {
             "[data-menu-toggle]"
         );
 
-
     const menu =
         document.querySelector(
             "[data-mobile-menu]"
         );
 
-
     if (!toggle || !menu) {
         return;
     }
-
 
     toggle.addEventListener(
         "click",
@@ -869,12 +838,9 @@ function initMobileMenu() {
                     "is-open"
                 );
 
-
             toggle.setAttribute(
                 "aria-expanded",
-                isOpen
-                    ? "true"
-                    : "false"
+                isOpen ? "true" : "false"
             );
 
         }
