@@ -41,7 +41,7 @@ $stmt = $pdo->prepare("
 
 $stmt->execute();
 
-$latestNews = $stmt->fetchAll();
+$latestNews = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 
 // =====================================================
@@ -50,17 +50,11 @@ $latestNews = $stmt->fetchAll();
 
 require_once __DIR__ . "/includes/header.php";
 
-
-// =====================================================
-// NAVBAR
-// =====================================================
-
-require_once __DIR__ . "/includes/navbar.php";
-
 ?>
 
+
 <!-- =====================================================
-     MAIN
+     MAIN CONTENT
 ===================================================== -->
 
 <main class="main-content">
@@ -68,6 +62,7 @@ require_once __DIR__ . "/includes/navbar.php";
     <div class="container">
 
         <section class="premium-news-section">
+
 
             <!-- =================================================
                  SECTION HEADER
@@ -79,14 +74,16 @@ require_once __DIR__ . "/includes/navbar.php";
                     সর্বশেষ সংবাদ
                 </h2>
 
-                <a href="<?php echo e(site_url("search")); ?>">
+                <a
+                    href="<?php echo e(site_url("search")); ?>"
+                >
                     সব সংবাদ →
                 </a>
 
             </div>
 
 
-            <?php if (count($latestNews) > 0): ?>
+            <?php if (!empty($latestNews)): ?>
 
 
                 <!-- =================================================
@@ -141,7 +138,9 @@ require_once __DIR__ . "/includes/navbar.php";
 
                                     <div class="photo-card-no-image">
 
-                                        ফুলছড়ি সমাচার
+                                        <span>
+                                            <?php echo e(SITE_NAME); ?>
+                                        </span>
 
                                     </div>
 
@@ -159,6 +158,8 @@ require_once __DIR__ . "/includes/navbar.php";
                                             site_url("assets/logo.png")
                                         ); ?>"
                                         alt="<?php echo e(SITE_NAME); ?>"
+                                        loading="lazy"
+                                        decoding="async"
                                     >
 
                                 </div>
@@ -318,7 +319,7 @@ require_once __DIR__ . "/includes/navbar.php";
 
 
                 <!-- =================================================
-                     NO NEWS
+                     NO NEWS STATE
                 ================================================== -->
 
                 <div class="premium-welcome">
@@ -348,7 +349,6 @@ require_once __DIR__ . "/includes/navbar.php";
 
 
         </section>
-
 
     </div>
 
