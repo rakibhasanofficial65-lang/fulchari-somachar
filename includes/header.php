@@ -232,4 +232,3 @@ if (file_exists($navbarFile)) {
 }
 
 ?>
-```
