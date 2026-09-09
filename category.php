@@ -54,7 +54,6 @@ if (!$category) {
         site_url("assets/logo.png");
 
     require_once __DIR__ . "/includes/header.php";
-    require_once __DIR__ . "/includes/navbar.php";
 
     ?>
 
@@ -114,17 +113,14 @@ $pageTitle =
     " — সর্বশেষ সংবাদ | " .
     SITE_NAME;
 
-
 $pageDescription =
     $category["name"] .
     " বিভাগের সর্বশেষ সংবাদ। " .
     SITE_NAME .
     " এ পড়ুন সর্বশেষ খবর, প্রতিবেদন ও সংবাদ।";
 
-
 $canonicalUrl =
     category_url($category["slug"]);
-
 
 $ogImage =
     site_url("assets/logo.png");
@@ -136,14 +132,8 @@ $ogImage =
 
 require_once __DIR__ . "/includes/header.php";
 
-
-// =====================================================
-// NAVBAR
-// =====================================================
-
-require_once __DIR__ . "/includes/navbar.php";
-
 ?>
+
 
 <style>
 
@@ -152,13 +142,9 @@ require_once __DIR__ . "/includes/navbar.php";
 ===================================================== */
 
 .category-page {
-
     background: #f4f4f4;
-
     min-height: 100vh;
-
     padding: 35px 0 50px;
-
 }
 
 
@@ -167,29 +153,18 @@ require_once __DIR__ . "/includes/navbar.php";
 ===================================================== */
 
 .category-breadcrumb {
-
     margin-bottom: 15px;
-
     font-size: 13px;
-
     color: #777;
-
 }
-
 
 .category-breadcrumb a {
-
     color: #b30000;
-
     text-decoration: none;
-
 }
 
-
 .category-breadcrumb a:hover {
-
     text-decoration: underline;
-
 }
 
 
@@ -198,46 +173,29 @@ require_once __DIR__ . "/includes/navbar.php";
 ===================================================== */
 
 .category-header {
-
     background: #fff;
-
     border: 1px solid #ddd;
-
     border-left: 6px solid #b30000;
-
     padding: 22px 25px;
-
     margin-bottom: 25px;
-
 }
 
-
 .category-header h1 {
-
     font-family:
         Georgia,
         "Noto Serif Bengali",
         serif;
 
     font-size: 32px;
-
     line-height: 1.4;
-
     color: #111;
-
     margin: 0 0 5px;
-
 }
 
-
 .category-header p {
-
     color: #777;
-
     font-size: 14px;
-
     margin: 0;
-
 }
 
 
@@ -246,14 +204,9 @@ require_once __DIR__ . "/includes/navbar.php";
 ===================================================== */
 
 .category-news-grid {
-
     display: grid;
-
-    grid-template-columns:
-        repeat(3, 1fr);
-
+    grid-template-columns: repeat(3, 1fr);
     gap: 24px;
-
 }
 
 
@@ -262,33 +215,24 @@ require_once __DIR__ . "/includes/navbar.php";
 ===================================================== */
 
 .category-card {
-
     background: #fff;
-
     border: 1px solid #ddd;
-
     border-radius: 9px;
-
     overflow: hidden;
 
     box-shadow:
-        0 4px 18px rgba(0,0,0,.07);
+        0 4px 18px rgba(0, 0, 0, .07);
 
     transition:
         transform .25s ease,
         box-shadow .25s ease;
-
 }
 
-
 .category-card:hover {
-
-    transform:
-        translateY(-5px);
+    transform: translateY(-5px);
 
     box-shadow:
-        0 10px 28px rgba(0,0,0,.13);
-
+        0 10px 28px rgba(0, 0, 0, .13);
 }
 
 
@@ -297,40 +241,31 @@ require_once __DIR__ . "/includes/navbar.php";
 ===================================================== */
 
 .category-card-image {
-
     position: relative;
-
     height: 235px;
-
     overflow: hidden;
-
     background: #ddd;
-
 }
 
+.category-card-image > a {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
 
 .category-card-image img {
-
     width: 100%;
-
     height: 100%;
-
     object-fit: cover;
-
     display: block;
 
     transition:
         transform .5s ease;
-
 }
-
 
 .category-card:hover
 .category-card-image img {
-
-    transform:
-        scale(1.06);
-
+    transform: scale(1.06);
 }
 
 
@@ -339,27 +274,20 @@ require_once __DIR__ . "/includes/navbar.php";
 ===================================================== */
 
 .category-card-image::after {
-
     content: "";
-
     position: absolute;
-
     left: 0;
-
     right: 0;
-
     bottom: 0;
-
     height: 40%;
 
     background:
         linear-gradient(
             transparent,
-            rgba(0,0,0,.72)
+            rgba(0, 0, 0, .72)
         );
 
     pointer-events: none;
-
 }
 
 
@@ -368,40 +296,29 @@ require_once __DIR__ . "/includes/navbar.php";
 ===================================================== */
 
 .category-card-logo {
-
     position: absolute;
 
     top: 12px;
-
     left: 12px;
 
     z-index: 5;
 
     background:
-        rgba(255,255,255,.96);
+        rgba(255, 255, 255, .96);
 
     padding: 5px 8px;
-
     border-radius: 5px;
 
     box-shadow:
-        0 2px 10px rgba(0,0,0,.25);
-
+        0 2px 10px rgba(0, 0, 0, .25);
 }
 
-
 .category-card-logo img {
-
     width: 130px;
-
     height: auto;
-
     max-height: 48px;
-
     object-fit: contain;
-
     display: block;
-
 }
 
 
@@ -410,27 +327,21 @@ require_once __DIR__ . "/includes/navbar.php";
 ===================================================== */
 
 .category-card-badge {
-
     position: absolute;
 
     bottom: 13px;
-
     left: 14px;
 
     z-index: 5;
 
     background: #b30000;
-
     color: #fff;
 
     padding: 5px 10px;
-
     border-radius: 3px;
 
     font-size: 12px;
-
     font-weight: bold;
-
 }
 
 
@@ -439,9 +350,7 @@ require_once __DIR__ . "/includes/navbar.php";
 ===================================================== */
 
 .category-card-content {
-
     padding: 18px;
-
 }
 
 
@@ -450,34 +359,24 @@ require_once __DIR__ . "/includes/navbar.php";
 ===================================================== */
 
 .category-card-title {
-
     font-family:
         Georgia,
         "Noto Serif Bengali",
         serif;
 
     font-size: 21px;
-
     line-height: 1.5;
 
     margin: 0 0 9px;
-
 }
-
 
 .category-card-title a {
-
     color: #171717;
-
     text-decoration: none;
-
 }
 
-
 .category-card-title a:hover {
-
     color: #b30000;
-
 }
 
 
@@ -486,15 +385,11 @@ require_once __DIR__ . "/includes/navbar.php";
 ===================================================== */
 
 .category-card-headline {
-
     color: #666;
-
     font-size: 14px;
-
     line-height: 1.7;
 
     margin: 0 0 13px;
-
 }
 
 
@@ -503,11 +398,8 @@ require_once __DIR__ . "/includes/navbar.php";
 ===================================================== */
 
 .category-card-meta {
-
     display: flex;
-
     align-items: center;
-
     justify-content: space-between;
 
     gap: 8px;
@@ -517,18 +409,12 @@ require_once __DIR__ . "/includes/navbar.php";
     border-top: 1px solid #eee;
 
     font-size: 12px;
-
     color: #888;
-
 }
 
-
 .category-card-reporter {
-
     color: #555;
-
     font-weight: bold;
-
 }
 
 
@@ -537,7 +423,6 @@ require_once __DIR__ . "/includes/navbar.php";
 ===================================================== */
 
 .category-card-read {
-
     display: inline-block;
 
     margin-top: 12px;
@@ -545,18 +430,13 @@ require_once __DIR__ . "/includes/navbar.php";
     color: #b30000;
 
     font-size: 14px;
-
     font-weight: bold;
 
     text-decoration: none;
-
 }
 
-
 .category-card-read:hover {
-
     color: #800000;
-
 }
 
 
@@ -565,13 +445,10 @@ require_once __DIR__ . "/includes/navbar.php";
 ===================================================== */
 
 .category-no-image {
-
     height: 100%;
 
     display: flex;
-
     align-items: center;
-
     justify-content: center;
 
     background:
@@ -582,9 +459,7 @@ require_once __DIR__ . "/includes/navbar.php";
         );
 
     color: #fff;
-
     font-size: 17px;
-
 }
 
 
@@ -593,9 +468,7 @@ require_once __DIR__ . "/includes/navbar.php";
 ===================================================== */
 
 .category-empty {
-
     background: #fff;
-
     border: 1px solid #ddd;
 
     padding: 70px 20px;
@@ -603,28 +476,18 @@ require_once __DIR__ . "/includes/navbar.php";
     text-align: center;
 
     border-radius: 7px;
-
 }
-
 
 .category-empty h1,
 .category-empty h2 {
-
     font-size: 28px;
-
     margin: 0 0 10px;
-
 }
 
-
 .category-empty p {
-
     color: #777;
-
     line-height: 1.8;
-
     margin: 0;
-
 }
 
 
@@ -633,7 +496,6 @@ require_once __DIR__ . "/includes/navbar.php";
 ===================================================== */
 
 .category-back-button {
-
     display: inline-block;
 
     margin-top: 20px;
@@ -641,7 +503,6 @@ require_once __DIR__ . "/includes/navbar.php";
     padding: 11px 22px;
 
     background: #b30000;
-
     color: #fff;
 
     text-decoration: none;
@@ -649,14 +510,10 @@ require_once __DIR__ . "/includes/navbar.php";
     border-radius: 5px;
 
     font-weight: bold;
-
 }
 
-
 .category-back-button:hover {
-
     background: #800000;
-
 }
 
 
@@ -667,10 +524,7 @@ require_once __DIR__ . "/includes/navbar.php";
 @media (max-width: 950px) {
 
     .category-news-grid {
-
-        grid-template-columns:
-            repeat(2, 1fr);
-
+        grid-template-columns: repeat(2, 1fr);
     }
 
 }
@@ -679,77 +533,46 @@ require_once __DIR__ . "/includes/navbar.php";
 @media (max-width: 600px) {
 
     .category-page {
-
         padding: 25px 0 35px;
-
     }
-
 
     .category-header {
-
         padding: 18px;
-
     }
-
 
     .category-header h1 {
-
         font-size: 27px;
-
     }
-
 
     .category-news-grid {
-
         grid-template-columns: 1fr;
-
         gap: 18px;
-
     }
-
 
     .category-card-image {
-
         height: 230px;
-
     }
-
 
     .category-card-title {
-
         font-size: 19px;
-
     }
-
 
     .category-card-logo img {
-
         width: 110px;
-
     }
-
 
     .category-card-meta {
-
         align-items: flex-start;
-
         flex-direction: column;
-
     }
-
 
     .category-empty {
-
         padding: 50px 18px;
-
     }
-
 
     .category-empty h1,
     .category-empty h2 {
-
         font-size: 23px;
-
     }
 
 }
@@ -778,9 +601,7 @@ require_once __DIR__ . "/includes/navbar.php";
 
             &nbsp; / &nbsp;
 
-            <?php echo e(
-                $category["name"]
-            ); ?>
+            <?php echo e($category["name"]); ?>
 
         </div>
 
@@ -792,21 +613,12 @@ require_once __DIR__ . "/includes/navbar.php";
         <div class="category-header">
 
             <h1>
-
-                <?php echo e(
-                    $category["name"]
-                ); ?>
-
+                <?php echo e($category["name"]); ?>
             </h1>
 
             <p>
-
-                <?php echo e(
-                    $category["name"]
-                ); ?>
-
+                <?php echo e($category["name"]); ?>
                 বিভাগের সর্বশেষ সংবাদ
-
             </p>
 
         </div>
@@ -851,9 +663,7 @@ require_once __DIR__ . "/includes/navbar.php";
 
                                     <img
                                         src="<?php echo e(
-                                            image_url(
-                                                $news["image"]
-                                            )
+                                            image_url($news["image"])
                                         ); ?>"
                                         alt="<?php echo e(
                                             $news["title"]
@@ -872,7 +682,7 @@ require_once __DIR__ . "/includes/navbar.php";
 
                                 <div class="category-no-image">
 
-                                    ফুলছড়ি সমাচার
+                                    <?php echo e(SITE_NAME); ?>
 
                                 </div>
 
@@ -887,13 +697,11 @@ require_once __DIR__ . "/includes/navbar.php";
 
                                 <img
                                     src="<?php echo e(
-                                        site_url(
-                                            "assets/logo.png"
-                                        )
+                                        site_url("assets/logo.png")
                                     ); ?>"
-                                    alt="<?php echo e(
-                                        SITE_NAME
-                                    ); ?>"
+                                    alt="<?php echo e(SITE_NAME); ?>"
+                                    loading="lazy"
+                                    decoding="async"
                                 >
 
                             </div>
@@ -928,9 +736,7 @@ require_once __DIR__ . "/includes/navbar.php";
 
                                 <a
                                     href="<?php echo e(
-                                        news_url(
-                                            $news["slug"]
-                                        )
+                                        news_url($news["slug"])
                                     ); ?>"
                                 >
 
@@ -954,9 +760,7 @@ require_once __DIR__ . "/includes/navbar.php";
                                 $cardText =
                                     $news["headline"];
 
-                            } elseif (
-                                !empty($news["content"])
-                            ) {
+                            } elseif (!empty($news["content"])) {
 
                                 $cardText =
                                     strip_tags(
@@ -967,9 +771,7 @@ require_once __DIR__ . "/includes/navbar.php";
 
                             ?>
 
-                            <?php if (
-                                !empty($cardText)
-                            ): ?>
+                            <?php if (!empty($cardText)): ?>
 
                                 <p class="category-card-headline">
 
@@ -1008,27 +810,21 @@ require_once __DIR__ . "/includes/navbar.php";
                                 <?php else: ?>
 
                                     <span>
-                                        <?php echo e(
-                                            SITE_NAME
-                                        ); ?>
+                                        <?php echo e(SITE_NAME); ?>
                                     </span>
 
                                 <?php endif; ?>
 
 
                                 <?php if (
-                                    !empty(
-                                        $news["published_at"]
-                                    )
+                                    !empty($news["published_at"])
                                 ): ?>
 
                                     <span>
 
                                         <?php echo e(
                                             format_date_bn(
-                                                $news[
-                                                    "published_at"
-                                                ]
+                                                $news["published_at"]
                                             )
                                         ); ?>
 
@@ -1044,15 +840,11 @@ require_once __DIR__ . "/includes/navbar.php";
 
                             <a
                                 href="<?php echo e(
-                                    news_url(
-                                        $news["slug"]
-                                    )
+                                    news_url($news["slug"])
                                 ); ?>"
                                 class="category-card-read"
                             >
-
                                 বিস্তারিত পড়ুন →
-
                             </a>
 
 
