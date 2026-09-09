@@ -70,7 +70,7 @@ require_once dirname(__DIR__) . "/config/config.php";
                 <h3>প্রশাসন</h3>
 
                 <a href="<?php echo e(SITE_URL . "/admin/login.php"); ?>">
-                    Admin Login
+                  ফুলছড়ি সমাচার..
                 </a>
                 <a
     href="https://www.facebook.com/profile.php?id=61593835547926"
