@@ -1,16 +1,22 @@
 <?php
 
-require_once "config/config.php";
-require_once "config/database.php";
+require_once __DIR__ . "/config/config.php";
+require_once __DIR__ . "/config/database.php";
+require_once __DIR__ . "/includes/functions.php";
 
 
 // =====================================================
-// SEARCH
+// SEARCH QUERY
 // =====================================================
 
 $search = trim($_GET["q"] ?? "");
 
 $results = [];
+
+
+// =====================================================
+// SEARCH NEWS
+// =====================================================
 
 if ($search !== "") {
 
@@ -25,13 +31,15 @@ if ($search !== "") {
         LEFT JOIN categories
             ON news.category_id = categories.id
         WHERE news.status = 'published'
-        AND (
-            news.title LIKE ?
-            OR news.headline LIKE ?
-            OR news.content LIKE ?
-            OR news.reporter LIKE ?
-        )
-        ORDER BY news.published_at DESC, news.id DESC
+          AND (
+                news.title LIKE ?
+                OR news.headline LIKE ?
+                OR news.content LIKE ?
+                OR news.reporter LIKE ?
+          )
+        ORDER BY
+            news.published_at DESC,
+            news.id DESC
         LIMIT 50
     ");
 
@@ -42,40 +50,48 @@ if ($search !== "") {
         $keyword
     ]);
 
-    $results = $stmt->fetchAll();
+    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
+
+// =====================================================
+// SEO
+// =====================================================
+
+if ($search !== "") {
+
+    $pageTitle =
+        "“" . $search . "” — সংবাদ অনুসন্ধান | " .
+        SITE_NAME;
+
+    $pageDescription =
+        SITE_NAME .
+        " এ “" .
+        $search .
+        "” সম্পর্কিত সর্বশেষ প্রকাশিত সংবাদ অনুসন্ধান করুন।";
+
+} else {
+
+    $pageTitle =
+        "সংবাদ অনুসন্ধান | " . SITE_NAME;
+
+    $pageDescription =
+        SITE_NAME .
+        " এ সর্বশেষ সংবাদ অনুসন্ধান করুন।";
+}
+
+$canonicalUrl = site_url("search.php");
+
+$ogImage = site_url("assets/logo.png");
+
+
+// =====================================================
+// HEADER
+// =====================================================
+
+require_once __DIR__ . "/includes/header.php";
+
 ?>
-
-<!DOCTYPE html>
-
-<html lang="bn">
-
-<head>
-
-<meta charset="UTF-8">
-
-<base href="<?php echo SITE_URL; ?>/">
-
-<meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
->
-
-<meta
-    name="description"
-    content="ফুলছড়ি সমাচার সংবাদ অনুসন্ধান"
->
-
-<title>
-    সংবাদ অনুসন্ধান | <?php echo SITE_NAME; ?>
-</title>
-
-<link
-    rel="stylesheet"
-    href="<?php echo SITE_URL; ?>/assets/style.css"
->
-
 
 <style>
 
@@ -85,17 +101,17 @@ if ($search !== "") {
 
 .search-page {
 
-    min-height: 650px;
-
     background: #f4f4f4;
 
-    padding: 35px 0 55px;
+    min-height: 100vh;
+
+    padding: 35px 0 60px;
 
 }
 
 
 /* =====================================================
-   SEARCH BOX
+   SEARCH HEADER
 ===================================================== */
 
 .search-box {
@@ -104,14 +120,23 @@ if ($search !== "") {
 
     border: 1px solid #ddd;
 
-    padding: 25px;
+    border-left: 5px solid #b30000;
+
+    padding: 24px;
 
     margin-bottom: 25px;
+
+    box-shadow:
+        0 4px 18px rgba(0, 0, 0, .06);
 
 }
 
 
 .search-box h1 {
+
+    margin: 0 0 17px;
+
+    color: #111;
 
     font-family:
         Georgia,
@@ -120,10 +145,14 @@ if ($search !== "") {
 
     font-size: 30px;
 
-    margin-bottom: 17px;
+    line-height: 1.4;
 
 }
 
+
+/* =====================================================
+   SEARCH FORM
+===================================================== */
 
 .search-form {
 
@@ -138,11 +167,19 @@ if ($search !== "") {
 
     flex: 1;
 
-    padding: 13px 15px;
+    min-width: 0;
+
+    height: 48px;
+
+    padding: 0 15px;
 
     border: 1px solid #bbb;
 
     border-radius: 5px;
+
+    background: #fff;
+
+    color: #222;
 
     font-size: 16px;
 
@@ -155,24 +192,31 @@ if ($search !== "") {
 
     border-color: #b30000;
 
+    box-shadow:
+        0 0 0 2px rgba(179, 0, 0, .08);
+
 }
 
 
 .search-button {
 
+    min-width: 110px;
+
+    height: 48px;
+
+    padding: 0 20px;
+
     border: 0;
+
+    border-radius: 5px;
 
     background: #b30000;
 
     color: #fff;
 
-    padding: 0 25px;
+    font-size: 15px;
 
-    border-radius: 5px;
-
-    font-size: 16px;
-
-    font-weight: bold;
+    font-weight: 700;
 
     cursor: pointer;
 
@@ -194,9 +238,11 @@ if ($search !== "") {
 
     margin-bottom: 18px;
 
-    font-size: 16px;
-
     color: #555;
+
+    font-size: 15px;
+
+    line-height: 1.7;
 
 }
 
@@ -217,7 +263,7 @@ if ($search !== "") {
     display: grid;
 
     grid-template-columns:
-        repeat(3, 1fr);
+        repeat(3, minmax(0, 1fr));
 
     gap: 22px;
 
@@ -239,7 +285,7 @@ if ($search !== "") {
     overflow: hidden;
 
     box-shadow:
-        0 4px 16px rgba(0,0,0,.07);
+        0 4px 16px rgba(0, 0, 0, .07);
 
     transition:
         transform .2s ease,
@@ -254,13 +300,13 @@ if ($search !== "") {
         translateY(-4px);
 
     box-shadow:
-        0 9px 25px rgba(0,0,0,.13);
+        0 9px 25px rgba(0, 0, 0, .13);
 
 }
 
 
 /* =====================================================
-   IMAGE
+   IMAGE AREA
 ===================================================== */
 
 .search-card-image {
@@ -276,7 +322,18 @@ if ($search !== "") {
 }
 
 
-.search-card-image img {
+.search-card-image > a {
+
+    display: block;
+
+    width: 100%;
+
+    height: 100%;
+
+}
+
+
+.search-card-image > a > img {
 
     width: 100%;
 
@@ -293,10 +350,39 @@ if ($search !== "") {
 
 
 .search-card:hover
-.search-card-image img {
+.search-card-image > a > img {
 
     transform:
         scale(1.05);
+
+}
+
+
+/* =====================================================
+   IMAGE OVERLAY
+===================================================== */
+
+.search-card-image::after {
+
+    content: "";
+
+    position: absolute;
+
+    left: 0;
+
+    right: 0;
+
+    bottom: 0;
+
+    height: 38%;
+
+    background:
+        linear-gradient(
+            transparent,
+            rgba(0, 0, 0, .70)
+        );
+
+    pointer-events: none;
 
 }
 
@@ -313,13 +399,17 @@ if ($search !== "") {
 
     left: 11px;
 
-    z-index: 3;
+    z-index: 5;
 
-    background: rgba(255,255,255,.95);
+    background:
+        rgba(255, 255, 255, .96);
 
     padding: 5px 8px;
 
     border-radius: 5px;
+
+    box-shadow:
+        0 2px 10px rgba(0, 0, 0, .20);
 
 }
 
@@ -330,13 +420,17 @@ if ($search !== "") {
 
     height: auto;
 
+    max-height: 45px;
+
+    object-fit: contain;
+
     display: block;
 
 }
 
 
 /* =====================================================
-   CATEGORY
+   CATEGORY BADGE
 ===================================================== */
 
 .search-card-category {
@@ -347,118 +441,19 @@ if ($search !== "") {
 
     left: 12px;
 
-    z-index: 3;
+    z-index: 5;
 
     background: #b30000;
 
     color: #fff;
 
-    padding: 4px 9px;
+    padding: 5px 10px;
 
     border-radius: 3px;
 
     font-size: 12px;
 
-    font-weight: bold;
-
-}
-
-
-/* =====================================================
-   CONTENT
-===================================================== */
-
-.search-card-content {
-
-    padding: 17px;
-
-}
-
-
-.search-card-title {
-
-    font-family:
-        Georgia,
-        "Noto Serif Bengali",
-        serif;
-
-    font-size: 20px;
-
-    line-height: 1.5;
-
-    margin-bottom: 8px;
-
-}
-
-
-.search-card-title a {
-
-    color: #222;
-
-    text-decoration: none;
-
-}
-
-
-.search-card-title a:hover {
-
-    color: #b30000;
-
-}
-
-
-.search-card-headline {
-
-    font-size: 14px;
-
-    color: #666;
-
-    line-height: 1.7;
-
-    margin-bottom: 12px;
-
-}
-
-
-.search-card-meta {
-
-    padding-top: 10px;
-
-    border-top: 1px solid #eee;
-
-    display: flex;
-
-    justify-content: space-between;
-
-    gap: 8px;
-
-    color: #888;
-
-    font-size: 12px;
-
-}
-
-
-.search-card-read {
-
-    display: inline-block;
-
-    margin-top: 12px;
-
-    color: #b30000;
-
-    font-weight: bold;
-
-    font-size: 14px;
-
-    text-decoration: none;
-
-}
-
-
-.search-card-read:hover {
-
-    color: #850000;
+    font-weight: 700;
 
 }
 
@@ -468,6 +463,8 @@ if ($search !== "") {
 ===================================================== */
 
 .search-no-image {
+
+    width: 100%;
 
     height: 100%;
 
@@ -488,13 +485,141 @@ if ($search !== "") {
 
     font-size: 18px;
 
-    font-weight: bold;
+    font-weight: 700;
 
 }
 
 
 /* =====================================================
-   EMPTY
+   CARD CONTENT
+===================================================== */
+
+.search-card-content {
+
+    padding: 17px;
+
+}
+
+
+/* =====================================================
+   TITLE
+===================================================== */
+
+.search-card-title {
+
+    margin: 0 0 9px;
+
+    font-family:
+        Georgia,
+        "Noto Serif Bengali",
+        serif;
+
+    font-size: 20px;
+
+    line-height: 1.5;
+
+}
+
+
+.search-card-title a {
+
+    color: #222;
+
+    text-decoration: none;
+
+}
+
+
+.search-card-title a:hover {
+
+    color: #b30000;
+
+}
+
+
+/* =====================================================
+   HEADLINE
+===================================================== */
+
+.search-card-headline {
+
+    margin: 0 0 12px;
+
+    color: #666;
+
+    font-size: 14px;
+
+    line-height: 1.75;
+
+}
+
+
+/* =====================================================
+   META
+===================================================== */
+
+.search-card-meta {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: flex-start;
+
+    gap: 8px;
+
+    padding-top: 10px;
+
+    border-top: 1px solid #eee;
+
+    color: #888;
+
+    font-size: 12px;
+
+    line-height: 1.6;
+
+}
+
+
+.search-card-reporter {
+
+    color: #555;
+
+    font-weight: 700;
+
+}
+
+
+/* =====================================================
+   READ MORE
+===================================================== */
+
+.search-card-read {
+
+    display: inline-block;
+
+    margin-top: 12px;
+
+    color: #b30000;
+
+    font-size: 14px;
+
+    font-weight: 700;
+
+    text-decoration: none;
+
+}
+
+
+.search-card-read:hover {
+
+    color: #850000;
+
+}
+
+
+/* =====================================================
+   EMPTY STATE
 ===================================================== */
 
 .search-empty {
@@ -503,23 +628,35 @@ if ($search !== "") {
 
     border: 1px solid #ddd;
 
-    text-align: center;
+    border-radius: 8px;
 
     padding: 70px 20px;
+
+    text-align: center;
 
 }
 
 
 .search-empty h2 {
 
-    margin-bottom: 8px;
+    margin: 0 0 10px;
+
+    color: #222;
+
+    font-size: 26px;
 
 }
 
 
 .search-empty p {
 
+    margin: 0;
+
     color: #777;
+
+    font-size: 15px;
+
+    line-height: 1.8;
 
 }
 
@@ -533,7 +670,7 @@ if ($search !== "") {
     .search-grid {
 
         grid-template-columns:
-            repeat(2, 1fr);
+            repeat(2, minmax(0, 1fr));
 
     }
 
@@ -572,7 +709,7 @@ if ($search !== "") {
 
     .search-button {
 
-        padding: 12px;
+        width: 100%;
 
     }
 
@@ -592,119 +729,30 @@ if ($search !== "") {
 
     }
 
+
+    .search-card-meta {
+
+        flex-direction: column;
+
+    }
+
+
+    .search-empty {
+
+        padding: 50px 18px;
+
+    }
+
+
+    .search-empty h2 {
+
+        font-size: 23px;
+
+    }
+
 }
 
 </style>
-
-</head>
-
-
-<body>
-
-
-<!-- =====================================================
-     HEADER
-===================================================== -->
-
-<header class="site-header">
-
-    <div class="container header-inner">
-
-        <div class="logo-area">
-
-            <a
-                href="<?php echo SITE_URL; ?>/index.php"
-                class="logo"
-            >
-
-                ফুলছড়ি সমাচার
-
-            </a>
-
-
-            <div class="tagline">
-
-                সত্যের পক্ষে, মানুষের পাশে
-
-            </div>
-
-        </div>
-
-    </div>
-
-</header>
-
-
-<!-- =====================================================
-     NAVBAR
-===================================================== -->
-
-<nav class="navbar">
-
-    <div class="container">
-
-        <ul class="nav-menu">
-
-      <li>
-                <a href="<?php echo SITE_URL; ?>/category/index">
-                    হোম
-                </a>
-            </li>
-
-            <li>
-                <a href="<?php echo SITE_URL; ?>/category/fulchari">
-                    ফুলছড়ি
-                </a>
-            </li>
-
-
-            <li>
-                <a href="<?php echo SITE_URL; ?>/category/national">
-                    জাতীয়
-                </a>
-            </li>
-
-
-            <li>
-                <a href="<?php echo SITE_URL; ?>/category/politics">
-                    রাজনীতি
-                </a>
-            </li>
-
-
-            <li>
-                <a href="<?php echo SITE_URL; ?>/category/corruption">
-                    দুর্নীতি
-                </a>
-            </li>
-
-
-            <li>
-                <a href="<?php echo SITE_URL; ?>/category/sports">
-                    খেলার খবর
-                </a>
-            </li>
-
-
-            <li>
-                <a href="<?php echo SITE_URL; ?>/category/entertainment">
-                    বিনোদন
-                </a>
-            </li>
-
-
-            <li>
-                <a href="<?php echo SITE_URL; ?>/category/epaper">
-                    ই-পেপার
-                </a>
-            </li>
-
-        </ul>
-
-    </div>
-
-</nav>
-
 
 <!-- =====================================================
      MAIN
@@ -712,10 +760,13 @@ if ($search !== "") {
 
 <main class="search-page">
 
+```
 <div class="container">
 
 
-    <!-- SEARCH BOX -->
+    <!-- =================================================
+         SEARCH BOX
+    ================================================= -->
 
     <section class="search-box">
 
@@ -726,7 +777,7 @@ if ($search !== "") {
 
         <form
             method="GET"
-            action="<?php echo SITE_URL; ?>/search.php"
+            action="<?php echo e(site_url("search.php")); ?>"
             class="search-form"
         >
 
@@ -734,15 +785,10 @@ if ($search !== "") {
                 type="text"
                 name="q"
                 class="search-input"
-                value="<?php
-                    echo htmlspecialchars(
-                        $search,
-                        ENT_QUOTES,
-                        "UTF-8"
-                    );
-                ?>"
-                placeholder="সংবাদের শিরোনাম লিখুন..."
+                value="<?php echo e($search); ?>"
+                placeholder="সংবাদের শিরোনাম, বিষয় বা প্রতিবেদকের নাম লিখুন..."
                 autocomplete="off"
+                aria-label="সংবাদ অনুসন্ধান"
             >
 
 
@@ -750,9 +796,7 @@ if ($search !== "") {
                 type="submit"
                 class="search-button"
             >
-
                 🔍 খুঁজুন
-
             </button>
 
         </form>
@@ -763,22 +807,20 @@ if ($search !== "") {
     <?php if ($search !== ""): ?>
 
 
+        <!-- =================================================
+             RESULT INFO
+        ================================================= -->
+
         <div class="search-result-info">
 
             <strong>
-                "<?php
-                echo htmlspecialchars(
-                    $search,
-                    ENT_QUOTES,
-                    "UTF-8"
-                );
-                ?>"
+                “<?php echo e($search); ?>”
             </strong>
 
             এর জন্য
 
             <strong>
-                <?php echo count($results); ?>
+                <?php echo bn_number(count($results)); ?>
             </strong>
 
             টি সংবাদ পাওয়া গেছে।
@@ -786,19 +828,44 @@ if ($search !== "") {
         </div>
 
 
-        <?php if (count($results) > 0): ?>
+        <?php if (!empty($results)): ?>
 
+
+            <!-- =================================================
+                 RESULT GRID
+            ================================================= -->
 
             <div class="search-grid">
 
 
-                <?php foreach ($results as $news): ?>
+                <?php foreach ($results as $index => $news): ?>
+
+                    <?php
+
+                    $cardText = "";
+
+                    if (!empty($news["headline"])) {
+
+                        $cardText =
+                            $news["headline"];
+
+                    } elseif (!empty($news["content"])) {
+
+                        $cardText =
+                            strip_tags(
+                                $news["content"]
+                            );
+                    }
+
+                    ?>
 
 
                     <article class="search-card">
 
 
-                        <!-- IMAGE -->
+                        <!-- =====================================
+                             IMAGE
+                        ====================================== -->
 
                         <div class="search-card-image">
 
@@ -806,13 +873,29 @@ if ($search !== "") {
                             <?php if (!empty($news["image"])): ?>
 
                                 <a
-                                    href="<?php echo SITE_URL; ?>/news/<?php echo urlencode($news["slug"]); ?>"
+                                    href="<?php echo e(
+                                        news_url($news["slug"])
+                                    ); ?>"
+                                    aria-label="<?php echo e(
+                                        $news["title"]
+                                    ); ?>"
                                 >
 
                                     <img
-                                        src="<?php echo SITE_URL; ?>/uploads/<?php echo htmlspecialchars($news["image"], ENT_QUOTES, "UTF-8"); ?>"
-                                        alt="<?php echo htmlspecialchars($news["title"], ENT_QUOTES, "UTF-8"); ?>"
-                                        loading="lazy"
+                                        src="<?php echo e(
+                                            image_url(
+                                                $news["image"]
+                                            )
+                                        ); ?>"
+                                        alt="<?php echo e(
+                                            $news["title"]
+                                        ); ?>"
+                                        loading="<?php
+                                            echo $index < 3
+                                                ? "eager"
+                                                : "lazy";
+                                        ?>"
+                                        decoding="async"
                                     >
 
                                 </a>
@@ -821,7 +904,7 @@ if ($search !== "") {
 
                                 <div class="search-no-image">
 
-                                    ফুলছড়ি সমাচার
+                                    <?php echo e(SITE_NAME); ?>
 
                                 </div>
 
@@ -833,8 +916,15 @@ if ($search !== "") {
                             <div class="search-card-logo">
 
                                 <img
-                                    src="<?php echo SITE_URL; ?>/assets/logo.png"
-                                    alt="ফুলছড়ি সমাচার"
+                                    src="<?php echo e(
+                                        site_url(
+                                            "assets/logo.png"
+                                        )
+                                    ); ?>"
+                                    alt="<?php echo e(
+                                        SITE_NAME
+                                    ); ?>"
+                                    loading="lazy"
                                 >
 
                             </div>
@@ -842,17 +932,19 @@ if ($search !== "") {
 
                             <!-- CATEGORY -->
 
-                            <?php if (!empty($news["category_name"])): ?>
+                            <?php if (
+                                !empty(
+                                    $news["category_name"]
+                                )
+                            ): ?>
 
-                                <div class="search-card-category">
+                                <div
+                                    class="search-card-category"
+                                >
 
-                                    <?php
-                                    echo htmlspecialchars(
-                                        $news["category_name"],
-                                        ENT_QUOTES,
-                                        "UTF-8"
-                                    );
-                                    ?>
+                                    <?php echo e(
+                                        $news["category_name"]
+                                    ); ?>
 
                                 </div>
 
@@ -862,7 +954,9 @@ if ($search !== "") {
                         </div>
 
 
-                        <!-- CONTENT -->
+                        <!-- =====================================
+                             CONTENT
+                        ====================================== -->
 
                         <div class="search-card-content">
 
@@ -870,102 +964,88 @@ if ($search !== "") {
                             <h2 class="search-card-title">
 
                                 <a
-                                    href="<?php echo SITE_URL; ?>/news/<?php echo urlencode($news["slug"]); ?>"
+                                    href="<?php echo e(
+                                        news_url(
+                                            $news["slug"]
+                                        )
+                                    ); ?>"
                                 >
 
-                                    <?php
-                                    echo htmlspecialchars(
-                                        $news["title"],
-                                        ENT_QUOTES,
-                                        "UTF-8"
-                                    );
-                                    ?>
+                                    <?php echo e(
+                                        $news["title"]
+                                    ); ?>
 
                                 </a>
 
                             </h2>
 
 
-                            <?php if (!empty($news["headline"])): ?>
+                            <?php if ($cardText !== ""): ?>
 
-                                <p class="search-card-headline">
+                                <p
+                                    class="search-card-headline"
+                                >
 
-                                    <?php
-                                    echo htmlspecialchars(
-                                        mb_substr(
-                                            $news["headline"],
-                                            0,
+                                    <?php echo e(
+                                        news_excerpt(
+                                            $cardText,
                                             150
-                                        ),
-                                        ENT_QUOTES,
-                                        "UTF-8"
-                                    );
-                                    ?>
-
-                                </p>
-
-                            <?php else: ?>
-
-                                <p class="search-card-headline">
-
-                                    <?php
-                                    echo htmlspecialchars(
-                                        mb_substr(
-                                            strip_tags(
-                                                $news["content"]
-                                            ),
-                                            0,
-                                            150
-                                        ),
-                                        ENT_QUOTES,
-                                        "UTF-8"
-                                    );
-                                    ?>
+                                        )
+                                    ); ?>
 
                                 </p>
 
                             <?php endif; ?>
 
 
+                            <!-- META -->
+
                             <div class="search-card-meta">
 
 
-                                <span>
+                                <?php if (
+                                    !empty(
+                                        $news["reporter"]
+                                    )
+                                ): ?>
 
-                                    <?php if (!empty($news["reporter"])): ?>
+                                    <span
+                                        class="search-card-reporter"
+                                    >
 
                                         রিপোর্ট:
-                                        <?php
-                                        echo htmlspecialchars(
-                                            $news["reporter"],
-                                            ENT_QUOTES,
-                                            "UTF-8"
-                                        );
-                                        ?>
+                                        <?php echo e(
+                                            $news["reporter"]
+                                        ); ?>
 
-                                    <?php else: ?>
+                                    </span>
 
-                                        <?php echo SITE_NAME; ?>
+                                <?php else: ?>
 
-                                    <?php endif; ?>
+                                    <span>
+                                        <?php echo e(
+                                            SITE_NAME
+                                        ); ?>
+                                    </span>
 
-                                </span>
+                                <?php endif; ?>
 
 
-                                <?php if (!empty($news["published_at"])): ?>
+                                <?php if (
+                                    !empty(
+                                        $news["published_at"]
+                                    )
+                                ): ?>
 
                                     <span>
 
-                                        <?php
-
-                                        echo date(
-                                            "d M Y",
-                                            strtotime(
-                                                $news["published_at"]
+                                        <?php echo e(
+                                            format_date_bn(
+                                                $news[
+                                                    "published_at"
+                                                ]
                                             )
-                                        );
-
-                                        ?>
+                                        ); ?>
 
                                     </span>
 
@@ -975,8 +1055,14 @@ if ($search !== "") {
                             </div>
 
 
+                            <!-- READ MORE -->
+
                             <a
-                                href="<?php echo SITE_URL; ?>/news/<?php echo urlencode($news["slug"]); ?>"
+                                href="<?php echo e(
+                                    news_url(
+                                        $news["slug"]
+                                    )
+                                ); ?>"
                                 class="search-card-read"
                             >
 
@@ -1000,6 +1086,10 @@ if ($search !== "") {
         <?php else: ?>
 
 
+            <!-- =================================================
+                 NO RESULT
+            ================================================= -->
+
             <div class="search-empty">
 
                 <h2>
@@ -1007,7 +1097,7 @@ if ($search !== "") {
                 </h2>
 
                 <p>
-                    অন্য কোনো keyword দিয়ে আবার চেষ্টা করুন।
+                    অন্য কোনো শব্দ দিয়ে আবার অনুসন্ধান করুন।
                 </p>
 
             </div>
@@ -1018,6 +1108,10 @@ if ($search !== "") {
 
     <?php else: ?>
 
+
+        <!-- =================================================
+             INITIAL STATE
+        ================================================= -->
 
         <div class="search-empty">
 
@@ -1037,34 +1131,16 @@ if ($search !== "") {
 
 
 </div>
+```
 
 </main>
 
+<?php
 
-<!-- =====================================================
-     FOOTER
-===================================================== -->
+// =====================================================
+// FOOTER
+// =====================================================
 
-<footer class="site-footer">
+require_once __DIR__ . "/includes/footer.php";
 
-    <div class="container">
-
-        <p>
-
-            &copy;
-            <?php echo date("Y"); ?>
-
-            <?php echo SITE_NAME; ?>.
-
-            সর্বস্বত্ব সংরক্ষিত।
-
-        </p>
-
-    </div>
-
-</footer>
-
-
-</body>
-
-</html>
+?>
