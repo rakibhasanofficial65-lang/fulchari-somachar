@@ -4,13 +4,17 @@ require_once __DIR__ . "/config/config.php";
 require_once __DIR__ . "/config/database.php";
 require_once __DIR__ . "/includes/functions.php";
 
+
 // =====================================================
 // SELECT DATE
 // =====================================================
 
 $selectedDate = $_GET["date"] ?? date("Y-m-d");
 
-$dateObject = DateTime::createFromFormat("Y-m-d", $selectedDate);
+$dateObject = DateTime::createFromFormat(
+    "Y-m-d",
+    $selectedDate
+);
 
 if (
     !$dateObject ||
@@ -19,23 +23,34 @@ if (
     $selectedDate = date("Y-m-d");
 }
 
-$selectedDateObject = new DateTime($selectedDate);
+$selectedDateObject = new DateTime(
+    $selectedDate
+);
 
-$today = new DateTime(date("Y-m-d"));
+$today = new DateTime(
+    date("Y-m-d")
+);
 
 
 // =====================================================
 // PREVIOUS / NEXT DATE
 // =====================================================
 
-$previousDateObject = clone $selectedDateObject;
+$previousDateObject =
+    clone $selectedDateObject;
+
 $previousDateObject->modify("-1 day");
 
-$nextDateObject = clone $selectedDateObject;
+$nextDateObject =
+    clone $selectedDateObject;
+
 $nextDateObject->modify("+1 day");
 
-$previousDate = $previousDateObject->format("Y-m-d");
-$nextDate = $nextDateObject->format("Y-m-d");
+$previousDate =
+    $previousDateObject->format("Y-m-d");
+
+$nextDate =
+    $nextDateObject->format("Y-m-d");
 
 
 // =====================================================
@@ -58,16 +73,20 @@ $stmt = $pdo->prepare("
         news.id DESC
 ");
 
-$stmt->execute([$selectedDate]);
+$stmt->execute([
+    $selectedDate
+]);
 
-$epaperNews = $stmt->fetchAll();
+$epaperNews =
+    $stmt->fetchAll();
 
 
 // =====================================================
 // LEAD NEWS
 // =====================================================
 
-$leadNews = $epaperNews[0] ?? null;
+$leadNews =
+    $epaperNews[0] ?? null;
 
 
 // =====================================================
@@ -78,19 +97,21 @@ $groupedNews = [];
 
 foreach ($epaperNews as $item) {
 
-    // Lead news আলাদা থাকবে
     if (
         $leadNews &&
-        (int)$item["id"] === (int)$leadNews["id"]
+        (int) $item["id"] ===
+        (int) $leadNews["id"]
     ) {
         continue;
     }
 
-    $categoryName = !empty($item["category_name"])
-        ? $item["category_name"]
-        : "সাধারণ";
+    $categoryName =
+        !empty($item["category_name"])
+            ? $item["category_name"]
+            : "সাধারণ";
 
-    $groupedNews[$categoryName][] = $item;
+    $groupedNews[$categoryName][] =
+        $item;
 }
 
 
@@ -99,6 +120,7 @@ foreach ($epaperNews as $item) {
 // =====================================================
 
 $banglaMonths = [
+
     1 => "জানুয়ারি",
     2 => "ফেব্রুয়ারি",
     3 => "মার্চ",
@@ -111,42 +133,92 @@ $banglaMonths = [
     10 => "অক্টোবর",
     11 => "নভেম্বর",
     12 => "ডিসেম্বর"
+
 ];
+
 
 $banglaDays = [
-    "Sunday" => "রবিবার",
-    "Monday" => "সোমবার",
-    "Tuesday" => "মঙ্গলবার",
-    "Wednesday" => "বুধবার",
-    "Thursday" => "বৃহস্পতিবার",
-    "Friday" => "শুক্রবার",
-    "Saturday" => "শনিবার"
+
+    "Sunday" =>
+        "রবিবার",
+
+    "Monday" =>
+        "সোমবার",
+
+    "Tuesday" =>
+        "মঙ্গলবার",
+
+    "Wednesday" =>
+        "বুধবার",
+
+    "Thursday" =>
+        "বৃহস্পতিবার",
+
+    "Friday" =>
+        "শুক্রবার",
+
+    "Saturday" =>
+        "শনিবার"
+
 ];
 
-$day = $selectedDateObject->format("d");
-$month = $banglaMonths[(int)$selectedDateObject->format("m")];
-$year = $selectedDateObject->format("Y");
-$dayName = $banglaDays[$selectedDateObject->format("l")];
 
-$displayDate = $day . " " . $month . " " . $year;
-$displayFullDate = $dayName . ", " . $displayDate;
+$day =
+    $selectedDateObject->format("d");
+
+$month =
+    $banglaMonths[
+        (int) $selectedDateObject->format("m")
+    ];
+
+$year =
+    $selectedDateObject->format("Y");
+
+$dayName =
+    $banglaDays[
+        $selectedDateObject->format("l")
+    ];
+
+
+$displayDate =
+    $day . " " .
+    $month . " " .
+    $year;
+
+
+$displayFullDate =
+    $dayName . ", " .
+    $displayDate;
 
 
 // =====================================================
 // PAGE SEO
 // =====================================================
 
-$pageTitle = "ই-পেপার | " . SITE_NAME . " | " . $displayDate;
+$pageTitle =
+    "ই-পেপার | " .
+    SITE_NAME .
+    " | " .
+    $displayDate;
+
 
 $pageDescription =
     SITE_NAME .
     " এর " .
     $displayDate .
-    " তারিখের দৈনিক ই-পেপার। ফুলছড়ি, জাতীয়, রাজনীতি, দুর্নীতি, খেলাধুলা ও বিনোদনের সর্বশেষ সংবাদ।";
+    " তারিখের দৈনিক ই-পেপার। " .
+    "ফুলছড়ি, জাতীয়, রাজনীতি, দুর্নীতি, " .
+    "খেলাধুলা ও বিনোদনের সর্বশেষ সংবাদ।";
 
-$canonicalUrl = epaper_url() . "?date=" . rawurlencode($selectedDate);
 
-$ogImage = site_url() . "/assets/logo.png";
+$canonicalUrl =
+    epaper_url() .
+    "?date=" .
+    rawurlencode($selectedDate);
+
+
+$ogImage =
+    site_url("assets/logo.png");
 
 
 // =====================================================
@@ -159,7 +231,17 @@ function epaper_time($datetime)
         return "";
     }
 
-    return date("h:i A", strtotime($datetime));
+    $timestamp =
+        strtotime($datetime);
+
+    if ($timestamp === false) {
+        return "";
+    }
+
+    return date(
+        "h:i A",
+        $timestamp
+    );
 }
 
 
@@ -167,19 +249,27 @@ function epaper_time($datetime)
 // HELPER: NEWS SHORT TEXT
 // =====================================================
 
-function epaper_summary($news, $length = 180)
-{
+function epaper_summary(
+    $news,
+    $length = 180
+) {
+
     $text = "";
 
     if (!empty($news["headline"])) {
 
-        $text = $news["headline"];
+        $text =
+            $news["headline"];
 
     } elseif (!empty($news["content"])) {
 
-        $text = strip_tags($news["content"]);
+        $text =
+            strip_tags(
+                $news["content"]
+            );
 
     }
+
 
     $text = trim(
         preg_replace(
@@ -189,18 +279,31 @@ function epaper_summary($news, $length = 180)
         )
     );
 
+
     if ($text === "") {
         return "";
     }
 
-    return mb_substr($text, 0, $length);
+
+    return mb_substr(
+        $text,
+        0,
+        $length
+    );
 }
+
+
+// =====================================================
+// HEADER
+// =====================================================
+
+require_once __DIR__ . "/includes/header.php";
 
 ?>
 
-<?php require __DIR__ . "/includes/header.php"; ?>
 
 <main class="epaper-page">
+
 
     <!-- =================================================
          TOP CONTROLS
@@ -246,7 +349,10 @@ function epaper_summary($news, $length = 180)
             </a>
 
 
-            <?php if ($selectedDate < $today->format("Y-m-d")): ?>
+            <?php if (
+                $selectedDate <
+                $today->format("Y-m-d")
+            ): ?>
 
                 <a
                     href="<?php echo e(epaper_url()); ?>?date=<?php echo e($nextDate); ?>"
@@ -277,6 +383,7 @@ function epaper_summary($news, $length = 180)
 
     <div class="newspaper">
 
+
         <!-- =================================================
              NEWSPAPER HEADER
         ================================================= -->
@@ -284,7 +391,7 @@ function epaper_summary($news, $length = 180)
         <header class="newspaper-header">
 
             <img
-                src="<?php echo e(site_url()); ?>/assets/logo.png"
+                src="<?php echo e(site_url("assets/logo.png")); ?>"
                 alt="<?php echo e(SITE_NAME); ?>"
                 class="newspaper-logo"
             >
@@ -310,24 +417,40 @@ function epaper_summary($news, $length = 180)
 
         <?php if ($leadNews): ?>
 
+
             <!-- =================================================
                  LEAD NEWS
             ================================================= -->
 
             <section class="lead-news">
 
+
                 <div class="lead-news-image-wrap">
 
-                    <?php if (!empty($leadNews["image"])): ?>
+                    <?php if (
+                        !empty($leadNews["image"])
+                    ): ?>
 
                         <a
-                            href="<?php echo e(news_url($leadNews["slug"])); ?>"
+                            href="<?php echo e(
+                                news_url(
+                                    $leadNews["slug"]
+                                )
+                            ); ?>"
                         >
 
                             <img
-                                src="<?php echo e(image_url($leadNews["image"])); ?>"
-                                alt="<?php echo e($leadNews["title"]); ?>"
+                                src="<?php echo e(
+                                    image_url(
+                                        $leadNews["image"]
+                                    )
+                                ); ?>"
+                                alt="<?php echo e(
+                                    $leadNews["title"]
+                                ); ?>"
                                 class="lead-image"
+                                fetchpriority="high"
+                                decoding="async"
                             >
 
                         </a>
@@ -335,7 +458,11 @@ function epaper_summary($news, $length = 180)
                     <?php else: ?>
 
                         <div class="lead-no-image">
-                            <?php echo e(SITE_NAME); ?>
+
+                            <?php echo e(
+                                SITE_NAME
+                            ); ?>
+
                         </div>
 
                     <?php endif; ?>
@@ -345,11 +472,20 @@ function epaper_summary($news, $length = 180)
 
                 <div class="lead-content">
 
-                    <?php if (!empty($leadNews["category_name"])): ?>
+
+                    <?php if (
+                        !empty(
+                            $leadNews["category_name"]
+                        )
+                    ): ?>
 
                         <div class="lead-category">
 
-                            <?php echo e($leadNews["category_name"]); ?>
+                            <?php echo e(
+                                $leadNews[
+                                    "category_name"
+                                ]
+                            ); ?>
 
                         </div>
 
@@ -359,23 +495,42 @@ function epaper_summary($news, $length = 180)
                     <h1 class="lead-title">
 
                         <a
-                            href="<?php echo e(news_url($leadNews["slug"])); ?>"
+                            href="<?php echo e(
+                                news_url(
+                                    $leadNews["slug"]
+                                )
+                            ); ?>"
                         >
-                            <?php echo e($leadNews["title"]); ?>
+
+                            <?php echo e(
+                                $leadNews["title"]
+                            ); ?>
+
                         </a>
 
                     </h1>
 
 
                     <?php
-                    $leadSummary = epaper_summary($leadNews, 420);
+
+                    $leadSummary =
+                        epaper_summary(
+                            $leadNews,
+                            420
+                        );
+
                     ?>
 
-                    <?php if ($leadSummary !== ""): ?>
+
+                    <?php if (
+                        $leadSummary !== ""
+                    ): ?>
 
                         <p class="lead-headline">
 
-                            <?php echo e($leadSummary); ?>
+                            <?php echo e(
+                                $leadSummary
+                            ); ?>
 
                         </p>
 
@@ -384,26 +539,51 @@ function epaper_summary($news, $length = 180)
 
                     <div class="lead-meta">
 
-                        <?php if (!empty($leadNews["reporter"])): ?>
+
+                        <?php if (
+                            !empty(
+                                $leadNews["reporter"]
+                            )
+                        ): ?>
 
                             <span>
+
                                 রিপোর্ট:
-                                <?php echo e($leadNews["reporter"]); ?>
+
+                                <?php echo e(
+                                    $leadNews[
+                                        "reporter"
+                                    ]
+                                ); ?>
+
                             </span>
 
                             <span>|</span>
 
                         <?php endif; ?>
 
+
                         <span>
-                            <?php echo e(epaper_time($leadNews["published_at"])); ?>
+
+                            <?php echo e(
+                                epaper_time(
+                                    $leadNews[
+                                        "published_at"
+                                    ]
+                                )
+                            ); ?>
+
                         </span>
 
                     </div>
 
 
                     <a
-                        href="<?php echo e(news_url($leadNews["slug"])); ?>"
+                        href="<?php echo e(
+                            news_url(
+                                $leadNews["slug"]
+                            )
+                        ); ?>"
                         class="read-more-btn"
                     >
                         বিস্তারিত পড়ুন →
@@ -415,23 +595,36 @@ function epaper_summary($news, $length = 180)
 
 
             <!-- =================================================
-                 BREAKING / NEWS COUNT BAR
+                 NEWS COUNT BAR
             ================================================= -->
 
             <div class="epaper-info-bar">
 
                 <div>
+
                     <strong>
                         আজকের সংবাদ
                     </strong>
 
                     <span>
-                        <?php echo bn_number(count($epaperNews)); ?>টি
+
+                        <?php echo e(
+                            bn_number(
+                                count($epaperNews)
+                            )
+                        ); ?>টি
+
                     </span>
+
                 </div>
 
+
                 <div>
-                    <?php echo e($displayDate); ?>
+
+                    <?php echo e(
+                        $displayDate
+                    ); ?>
+
                 </div>
 
             </div>
@@ -441,39 +634,73 @@ function epaper_summary($news, $length = 180)
                  ALL OTHER NEWS
             ================================================= -->
 
-            <?php if (!empty($groupedNews)): ?>
+            <?php if (
+                !empty($groupedNews)
+            ): ?>
 
                 <div class="epaper-grid">
 
-                    <?php foreach ($groupedNews as $categoryName => $categoryNews): ?>
+
+                    <?php foreach (
+                        $groupedNews
+                        as $categoryName =>
+                        $categoryNews
+                    ): ?>
+
 
                         <section class="epaper-section">
 
+
                             <div class="epaper-section-title">
 
-                                <span class="section-red-line"></span>
+                                <span
+                                    class="section-red-line"
+                                ></span>
 
-                                <?php echo e($categoryName); ?>
+                                <?php echo e(
+                                    $categoryName
+                                ); ?>
 
                             </div>
 
 
-                            <?php foreach ($categoryNews as $item): ?>
+                            <?php foreach (
+                                $categoryNews
+                                as $item
+                            ): ?>
 
-                                <article class="epaper-item">
+
+                                <article
+                                    class="epaper-item"
+                                >
 
 
-                                    <?php if (!empty($item["image"])): ?>
+                                    <?php if (
+                                        !empty(
+                                            $item["image"]
+                                        )
+                                    ): ?>
 
                                         <a
-                                            href="<?php echo e(news_url($item["slug"])); ?>"
+                                            href="<?php echo e(
+                                                news_url(
+                                                    $item["slug"]
+                                                )
+                                            ); ?>"
                                         >
 
                                             <img
-                                                src="<?php echo e(image_url($item["image"])); ?>"
-                                                alt="<?php echo e($item["title"]); ?>"
+                                                src="<?php echo e(
+                                                    image_url(
+                                                        $item["image"]
+                                                    )
+                                                ); ?>"
+                                                alt="<?php echo e(
+                                                    $item["title"]
+                                                ); ?>"
                                                 class="epaper-item-image"
                                                 loading="lazy"
+                                                decoding="async"
                                             >
 
                                         </a>
@@ -481,20 +708,32 @@ function epaper_summary($news, $length = 180)
                                     <?php endif; ?>
 
 
-                                    <div class="epaper-item-category">
+                                    <div
+                                        class="epaper-item-category"
+                                    >
 
-                                        <?php echo e($categoryName); ?>
+                                        <?php echo e(
+                                            $categoryName
+                                        ); ?>
 
                                     </div>
 
 
-                                    <h2 class="epaper-item-title">
+                                    <h2
+                                        class="epaper-item-title"
+                                    >
 
                                         <a
-                                            href="<?php echo e(news_url($item["slug"])); ?>"
+                                            href="<?php echo e(
+                                                news_url(
+                                                    $item["slug"]
+                                                )
+                                            ); ?>"
                                         >
 
-                                            <?php echo e($item["title"]); ?>
+                                            <?php echo e(
+                                                $item["title"]
+                                            ); ?>
 
                                         </a>
 
@@ -502,50 +741,86 @@ function epaper_summary($news, $length = 180)
 
 
                                     <?php
-                                    $shortText = epaper_summary(
-                                        $item,
-                                        180
-                                    );
+
+                                    $shortText =
+                                        epaper_summary(
+                                            $item,
+                                            180
+                                        );
+
                                     ?>
 
 
-                                    <?php if ($shortText !== ""): ?>
+                                    <?php if (
+                                        $shortText !== ""
+                                    ): ?>
 
-                                        <p class="epaper-item-text">
+                                        <p
+                                            class="epaper-item-text"
+                                        >
 
-                                            <?php echo e($shortText); ?>
+                                            <?php echo e(
+                                                $shortText
+                                            ); ?>
 
                                         </p>
 
                                     <?php endif; ?>
 
 
-                                    <div class="epaper-item-meta">
+                                    <div
+                                        class="epaper-item-meta"
+                                    >
 
-                                        <?php if (!empty($item["reporter"])): ?>
+
+                                        <?php if (
+                                            !empty(
+                                                $item["reporter"]
+                                            )
+                                        ): ?>
 
                                             <span>
+
                                                 রিপোর্ট:
-                                                <?php echo e($item["reporter"]); ?>
+
+                                                <?php echo e(
+                                                    $item[
+                                                        "reporter"
+                                                    ]
+                                                ); ?>
+
                                             </span>
 
                                             <span>|</span>
 
                                         <?php endif; ?>
 
+
                                         <span>
-                                            <?php echo e(epaper_time($item["published_at"])); ?>
+
+                                            <?php echo e(
+                                                epaper_time(
+                                                    $item[
+                                                        "published_at"
+                                                    ]
+                                                )
+                                            ); ?>
+
                                         </span>
 
                                     </div>
 
                                 </article>
 
+
                             <?php endforeach; ?>
+
 
                         </section>
 
+
                     <?php endforeach; ?>
+
 
                 </div>
 
@@ -553,6 +828,7 @@ function epaper_summary($news, $length = 180)
 
 
         <?php else: ?>
+
 
             <!-- =================================================
                  NO NEWS
@@ -569,9 +845,16 @@ function epaper_summary($news, $length = 180)
                 </h2>
 
                 <p>
-                    <?php echo e($displayDate); ?>
-                    তারিখে কোনো Published News পাওয়া যায়নি।
+
+                    <?php echo e(
+                        $displayDate
+                    ); ?>
+
+                    তারিখে কোনো Published News
+                    পাওয়া যায়নি।
+
                 </p>
+
 
                 <a
                     href="<?php echo e(epaper_url()); ?>"
@@ -592,18 +875,29 @@ function epaper_summary($news, $length = 180)
         <footer class="epaper-footer">
 
             <div class="footer-main-name">
-                <?php echo e(SITE_NAME); ?>
+
+                <?php echo e(
+                    SITE_NAME
+                ); ?>
+
             </div>
+
 
             <div>
                 সত্যের পক্ষে, মানুষের পাশে
             </div>
 
+
             <div>
-                <?php echo e($displayDate); ?>
+
+                <?php echo e(
+                    $displayDate
+                ); ?>
+
             </div>
 
         </footer>
+
 
     </div>
 
@@ -770,7 +1064,7 @@ function epaper_summary($news, $length = 180)
     border: 1px solid #c9c9c9;
 
     box-shadow:
-        0 8px 35px rgba(0,0,0,.15);
+        0 8px 35px rgba(0, 0, 0, .15);
 
 }
 
@@ -857,7 +1151,8 @@ function epaper_summary($news, $length = 180)
 
     display: grid;
 
-    grid-template-columns: 1.55fr 1fr;
+    grid-template-columns:
+        1.55fr 1fr;
 
     gap: 28px;
 
@@ -1526,6 +1821,7 @@ function epaper_summary($news, $length = 180)
 
     .site-header,
     .navbar,
+    .main-navbar,
     .site-footer,
     .epaper-controls {
 
@@ -1569,7 +1865,8 @@ function epaper_summary($news, $length = 180)
 
     .lead-news {
 
-        grid-template-columns: 1.5fr 1fr;
+        grid-template-columns:
+            1.5fr 1fr;
 
         break-inside: avoid;
 
@@ -1644,4 +1941,8 @@ function epaper_summary($news, $length = 180)
 </style>
 
 
-<?php require __DIR__ . "/includes/footer.php"; ?>
+<?php
+
+require __DIR__ . "/includes/footer.php";
+
+?>
