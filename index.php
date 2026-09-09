@@ -333,14 +333,7 @@ require_once __DIR__ . "/includes/header.php";
                         এখানে Automatic Premium Photo Card তৈরি হবে।
                     </p>
 
-                    <a
-                        href="<?php echo e(
-                            site_url("admin/login.php")
-                        ); ?>"
-                        class="photo-card-read"
-                    >
-                        Admin Panel →
-                    </a>
+            
 
                 </div>
 
