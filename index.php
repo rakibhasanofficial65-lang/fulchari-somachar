@@ -318,7 +318,44 @@ require_once __DIR__ . "/includes/header.php";
             <?php else: ?>
 
 
-       
+                <!-- =================================================
+                     NO NEWS STATE
+                ================================================== -->
+
+                <div class="premium-welcome">
+
+                    <h1>
+                        এখনো কোনো সংবাদ প্রকাশিত হয়নি
+                    </h1>
+
+                    <p>
+                        Admin Panel থেকে সংবাদ Publish করলে
+                        এখানে Automatic Premium Photo Card তৈরি হবে।
+                    </p>
+
+                    <a
+                        href="<?php echo e(
+                            site_url("admin/login.php")
+                        ); ?>"
+                        class="photo-card-read"
+                    >
+                        Admin Panel →
+                    </a>
+
+                </div>
+
+
+            <?php endif; ?>
+
+
+        </section>
+
+    </div>
+
+</main>
+
+
+<?php
 
 // =====================================================
 // FOOTER
