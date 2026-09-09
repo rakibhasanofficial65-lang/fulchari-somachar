@@ -31,17 +31,19 @@ if (!$news) {
 
     http_response_code(404);
 
-    $pageTitle = "সংবাদ পাওয়া যায়নি - " . SITE_NAME;
+    $pageTitle =
+        "সংবাদ পাওয়া যায়নি - " . SITE_NAME;
 
     $pageDescription =
         "আপনি যে সংবাদটি খুঁজছেন সেটি পাওয়া যায়নি।";
 
-    $canonicalUrl = site_url("404");
+    $canonicalUrl =
+        site_url("404");
 
-    $ogImage = site_url("assets/logo.png");
+    $ogImage =
+        site_url("assets/logo.png");
 
     require_once __DIR__ . "/includes/header.php";
-    require_once __DIR__ . "/includes/navbar.php";
 
     ?>
 
@@ -125,14 +127,18 @@ $pageDescription = $descriptionText;
 // CANONICAL URL
 // =====================================================
 
-$canonicalUrl = news_url($news["slug"]);
+$canonicalUrl =
+    news_url($news["slug"]);
 
 
 // =====================================================
 // IMAGE URL
 // =====================================================
 
-$imageUrl = image_url($news["image"]);
+$imageUrl =
+    !empty($news["image"])
+        ? image_url($news["image"])
+        : site_url("assets/logo.png");
 
 
 // =====================================================
@@ -143,30 +149,29 @@ $datePublished = "";
 
 if (!empty($news["published_at"])) {
 
-    $timestamp = strtotime($news["published_at"]);
+    $timestamp =
+        strtotime($news["published_at"]);
 
     if ($timestamp !== false) {
 
-        $datePublished = date(
-            "c",
-            $timestamp
-        );
+        $datePublished =
+            date("c", $timestamp);
     }
 }
 
 
-$dateModified = $datePublished;
+$dateModified =
+    $datePublished;
 
 if (!empty($news["updated_at"])) {
 
-    $timestamp = strtotime($news["updated_at"]);
+    $timestamp =
+        strtotime($news["updated_at"]);
 
     if ($timestamp !== false) {
 
-        $dateModified = date(
-            "c",
-            $timestamp
-        );
+        $dateModified =
+            date("c", $timestamp);
     }
 }
 
@@ -177,32 +182,41 @@ if (!empty($news["updated_at"])) {
 
 $schemaData = [
 
-    "@context" => "https://schema.org",
+    "@context" =>
+        "https://schema.org",
 
-    "@type" => "NewsArticle",
+    "@type" =>
+        "NewsArticle",
 
     "mainEntityOfPage" => [
 
-        "@type" => "WebPage",
+        "@type" =>
+            "WebPage",
 
-        "@id" => $canonicalUrl
+        "@id" =>
+            $canonicalUrl
 
     ],
 
-    "headline" => $rawTitle,
+    "headline" =>
+        $rawTitle,
 
-    "description" => $pageDescription,
+    "description" =>
+        $pageDescription,
 
-    "url" => $canonicalUrl,
+    "url" =>
+        $canonicalUrl,
 
     "articleSection" =>
         $news["category_name"] ?? "",
 
-    "inLanguage" => "bn-BD",
+    "inLanguage" =>
+        "bn-BD",
 
     "author" => [
 
-        "@type" => "Person",
+        "@type" =>
+            "Person",
 
         "name" =>
             !empty($news["reporter"])
@@ -213,15 +227,19 @@ $schemaData = [
 
     "publisher" => [
 
-        "@type" => "Organization",
+        "@type" =>
+            "Organization",
 
-        "name" => SITE_NAME,
+        "name" =>
+            SITE_NAME,
 
-        "url" => site_url(),
+        "url" =>
+            site_url(),
 
         "logo" => [
 
-            "@type" => "ImageObject",
+            "@type" =>
+                "ImageObject",
 
             "url" =>
                 site_url("assets/logo.png")
@@ -247,7 +265,7 @@ if (!empty($dateModified)) {
 }
 
 
-if (!empty($imageUrl)) {
+if (!empty($news["image"])) {
 
     $schemaData["image"] = [
         $imageUrl
@@ -261,14 +279,8 @@ if (!empty($imageUrl)) {
 
 require_once __DIR__ . "/includes/header.php";
 
-
-// =====================================================
-// NAVBAR
-// =====================================================
-
-require_once __DIR__ . "/includes/navbar.php";
-
 ?>
+
 
 <style>
 
@@ -309,6 +321,12 @@ require_once __DIR__ . "/includes/navbar.php";
 
 }
 
+.article-breadcrumb a:hover {
+
+    text-decoration: underline;
+
+}
+
 
 /* =====================================================
    CATEGORY
@@ -338,6 +356,11 @@ require_once __DIR__ . "/includes/navbar.php";
 ===================================================== */
 
 .article-title {
+
+    font-family:
+        Georgia,
+        "Noto Serif Bengali",
+        serif;
 
     font-size: 42px;
 
@@ -615,7 +638,9 @@ require_once __DIR__ . "/includes/navbar.php";
 
     overflow: hidden;
 
-    transition: 0.2s ease;
+    transition:
+        transform .2s ease,
+        box-shadow .2s ease;
 
 }
 
@@ -625,7 +650,7 @@ require_once __DIR__ . "/includes/navbar.php";
     transform: translateY(-3px);
 
     box-shadow:
-        0 8px 25px rgba(0, 0, 0, 0.10);
+        0 8px 25px rgba(0, 0, 0, .10);
 
 }
 
@@ -998,6 +1023,7 @@ require_once __DIR__ . "/includes/navbar.php";
             alt="<?php echo e($news["title"]); ?>"
             class="article-image"
             fetchpriority="high"
+            decoding="async"
         >
 
     <?php endif; ?>
@@ -1240,7 +1266,11 @@ function copyNewsLink() {
         <?php echo json_encode(
             $canonicalUrl,
             JSON_UNESCAPED_UNICODE |
-            JSON_UNESCAPED_SLASHES
+            JSON_UNESCAPED_SLASHES |
+            JSON_HEX_TAG |
+            JSON_HEX_AMP |
+            JSON_HEX_APOS |
+            JSON_HEX_QUOT
         ); ?>;
 
 
