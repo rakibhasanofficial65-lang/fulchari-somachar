@@ -24,6 +24,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     initMobileMenu();
 
+    initVercelBlobUpload();
+
 });
 
 
@@ -167,6 +169,517 @@ function initImagePreview() {
 
 
 /* =========================================================
+   VERCEL BLOB IMAGE UPLOAD
+========================================================= */
+
+function initVercelBlobUpload() {
+
+    const imageInputs =
+        document.querySelectorAll(
+            'input[type="file"][data-blob-upload]'
+        );
+
+
+    if (!imageInputs.length) {
+        return;
+    }
+
+
+    imageInputs.forEach(function (input) {
+
+        const form =
+            input.closest("form");
+
+
+        if (!form) {
+            return;
+        }
+
+
+        let blobUrlInput =
+            form.querySelector(
+                'input[name="image_url"]'
+            );
+
+
+        if (!blobUrlInput) {
+
+            blobUrlInput =
+                document.createElement("input");
+
+            blobUrlInput.type = "hidden";
+            blobUrlInput.name = "image_url";
+
+            form.appendChild(
+                blobUrlInput
+            );
+
+        }
+
+
+        let statusElement =
+            form.querySelector(
+                "[data-upload-status]"
+            );
+
+
+        if (!statusElement) {
+
+            statusElement =
+                document.createElement("div");
+
+            statusElement.setAttribute(
+                "data-upload-status",
+                "true"
+            );
+
+            statusElement.className =
+                "blob-upload-status";
+
+            input.parentNode.appendChild(
+                statusElement
+            );
+
+        }
+
+
+        let progressElement =
+            form.querySelector(
+                "[data-upload-progress]"
+            );
+
+
+        if (!progressElement) {
+
+            progressElement =
+                document.createElement("progress");
+
+            progressElement.setAttribute(
+                "data-upload-progress",
+                "true"
+            );
+
+            progressElement.max = 100;
+            progressElement.value = 0;
+
+            progressElement.className =
+                "blob-upload-progress";
+
+            progressElement.style.display =
+                "none";
+
+            input.parentNode.appendChild(
+                progressElement
+            );
+
+        }
+
+
+        let submitButton =
+            form.querySelector(
+                'button[type="submit"], input[type="submit"]'
+            );
+
+
+        let uploadPromise = null;
+
+
+        input.addEventListener(
+            "change",
+            function () {
+
+                const file =
+                    input.files &&
+                    input.files[0];
+
+
+                blobUrlInput.value = "";
+
+
+                if (!file) {
+
+                    statusElement.textContent = "";
+
+                    progressElement.style.display =
+                        "none";
+
+                    progressElement.value = 0;
+
+                    return;
+
+                }
+
+
+                if (
+                    file.type !== "image/jpeg" &&
+                    file.type !== "image/png" &&
+                    file.type !== "image/webp"
+                ) {
+
+                    statusElement.textContent =
+                        "শুধু JPG, PNG অথবা WebP ছবি ব্যবহার করুন।";
+
+                    statusElement.className =
+                        "blob-upload-status upload-error";
+
+                    input.value = "";
+
+                    return;
+
+                }
+
+
+                const maxSize =
+                    40 * 1024 * 1024;
+
+
+                if (file.size > maxSize) {
+
+                    statusElement.textContent =
+                        "ছবির সর্বোচ্চ আকার 40MB হতে পারে।";
+
+                    statusElement.className =
+                        "blob-upload-status upload-error";
+
+                    input.value = "";
+
+                    return;
+
+                }
+
+
+                statusElement.textContent =
+                    "ছবি প্রস্তুত হচ্ছে...";
+
+                statusElement.className =
+                    "blob-upload-status upload-processing";
+
+
+                progressElement.style.display =
+                    "block";
+
+                progressElement.value = 0;
+
+
+                uploadPromise =
+                    uploadToVercelBlob(
+                        file,
+                        statusElement,
+                        progressElement,
+                        function (url) {
+
+                            blobUrlInput.value =
+                                url;
+
+                        }
+                    );
+
+            }
+        );
+
+
+        form.addEventListener(
+            "submit",
+            async function (event) {
+
+                const file =
+                    input.files &&
+                    input.files[0];
+
+
+                if (!file) {
+                    return;
+                }
+
+
+                if (
+                    blobUrlInput.value
+                ) {
+
+                    return;
+
+                }
+
+
+                event.preventDefault();
+
+
+                if (!uploadPromise) {
+
+                    statusElement.textContent =
+                        "ছবি upload শুরু করা যাচ্ছে না।";
+
+                    statusElement.className =
+                        "blob-upload-status upload-error";
+
+                    return;
+
+                }
+
+
+                if (submitButton) {
+
+                    submitButton.disabled =
+                        true;
+
+                    submitButton.dataset.originalText =
+                        submitButton.tagName === "INPUT"
+                            ? submitButton.value
+                            : submitButton.textContent;
+
+
+                    if (
+                        submitButton.tagName === "INPUT"
+                    ) {
+
+                        submitButton.value =
+                            "ছবি Upload হচ্ছে...";
+
+                    } else {
+
+                        submitButton.textContent =
+                            "ছবি Upload হচ্ছে...";
+
+                    }
+
+                }
+
+
+                try {
+
+                    await uploadPromise;
+
+                    if (!blobUrlInput.value) {
+
+                        throw new Error(
+                            "Blob URL পাওয়া যায়নি।"
+                        );
+
+                    }
+
+
+                    statusElement.textContent =
+                        "ছবি সফলভাবে Upload হয়েছে।";
+
+                    statusElement.className =
+                        "blob-upload-status upload-success";
+
+
+                    form.submit();
+
+                } catch (error) {
+
+                    console.error(
+                        "Vercel Blob upload error:",
+                        error
+                    );
+
+
+                    statusElement.textContent =
+                        "ছবি Upload করা যায়নি। আবার চেষ্টা করুন।";
+
+                    statusElement.className =
+                        "blob-upload-status upload-error";
+
+
+                    if (submitButton) {
+
+                        submitButton.disabled =
+                            false;
+
+                        restoreSubmitButton(
+                            submitButton
+                        );
+
+                    }
+
+                }
+
+            }
+        );
+
+    });
+
+}
+
+
+/* =========================================================
+   UPLOAD TO VERCEL BLOB
+========================================================= */
+
+async function uploadToVercelBlob(
+    file,
+    statusElement,
+    progressElement,
+    onSuccess
+) {
+
+    try {
+
+        /*
+         * Load the Vercel Blob client SDK
+         * directly in the browser.
+         */
+
+        const blobModule =
+            await import(
+                "https://esm.sh/@vercel/blob/client@2.6.1"
+            );
+
+
+        const upload =
+            blobModule.upload;
+
+
+        if (
+            typeof upload !== "function"
+        ) {
+
+            throw new Error(
+                "Vercel Blob client library পাওয়া যায়নি।"
+            );
+
+        }
+
+
+        statusElement.textContent =
+            "ছবি Upload হচ্ছে...";
+
+
+        const blob =
+            await upload(
+                file.name,
+                file,
+                {
+                    access: "public",
+
+                    handleUploadUrl:
+                        "/api/upload",
+
+                    multipart: true,
+
+                    onUploadProgress:
+                        function (event) {
+
+                            const percentage =
+                                Number(
+                                    event.percentage || 0
+                                );
+
+
+                            progressElement.value =
+                                percentage;
+
+
+                            statusElement.textContent =
+                                "ছবি Upload হচ্ছে... " +
+                                Math.round(
+                                    percentage
+                                ) +
+                                "%";
+
+                        }
+                }
+            );
+
+
+        if (
+            !blob ||
+            !blob.url
+        ) {
+
+            throw new Error(
+                "Vercel Blob থেকে image URL পাওয়া যায়নি।"
+            );
+
+        }
+
+
+        onSuccess(
+            blob.url
+        );
+
+
+        progressElement.value =
+            100;
+
+
+        statusElement.textContent =
+            "ছবি সফলভাবে Upload হয়েছে।";
+
+
+        statusElement.className =
+            "blob-upload-status upload-success";
+
+
+        return blob.url;
+
+    } catch (error) {
+
+        console.error(
+            "Vercel Blob upload failed:",
+            error
+        );
+
+
+        statusElement.textContent =
+            "ছবি Upload ব্যর্থ হয়েছে।";
+
+
+        statusElement.className =
+            "blob-upload-status upload-error";
+
+
+        progressElement.style.display =
+            "none";
+
+
+        throw error;
+
+    }
+
+}
+
+
+/* =========================================================
+   RESTORE SUBMIT BUTTON
+========================================================= */
+
+function restoreSubmitButton(
+    button
+) {
+
+    if (
+        !button ||
+        !button.dataset.originalText
+    ) {
+
+        return;
+
+    }
+
+
+    if (
+        button.tagName === "INPUT"
+    ) {
+
+        button.value =
+            button.dataset.originalText;
+
+    } else {
+
+        button.textContent =
+            button.dataset.originalText;
+
+    }
+
+
+    delete button.dataset.originalText;
+
+}
+
+
+/* =========================================================
    AUTO HIDE ALERT
 ========================================================= */
 
@@ -251,7 +764,8 @@ function initSearchForm() {
                 }
 
 
-                input.value = value;
+                input.value =
+                    value;
 
             }
         );
@@ -394,4 +908,3 @@ window.printEpaper =
         window.print();
 
     };
-}
