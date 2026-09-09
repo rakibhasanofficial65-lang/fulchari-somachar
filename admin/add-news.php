@@ -1,9 +1,11 @@
+```php
 <?php
 
 session_start();
 
 require_once dirname(__DIR__) . "/config/config.php";
 require_once dirname(__DIR__) . "/config/database.php";
+require_once dirname(__DIR__) . "/includes/functions.php";
 
 
 // =====================================================
@@ -37,6 +39,7 @@ $success = "";
 $title = "";
 $headline = "";
 $category_id = 0;
+$imageUrl = "";
 $content = "";
 $reporter = "";
 $status = "draft";
@@ -83,6 +86,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $title = trim($_POST["title"] ?? "");
         $headline = trim($_POST["headline"] ?? "");
         $category_id = (int)($_POST["category_id"] ?? 0);
+        $imageUrl = trim($_POST["image_url"] ?? "");
         $content = trim($_POST["content"] ?? "");
         $reporter = trim($_POST["reporter"] ?? "");
         $status = $_POST["status"] ?? "draft";
@@ -112,6 +116,30 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
 
         // =================================================
+        // IMAGE URL VALIDATION
+        // =================================================
+
+        if ($error === "" && $imageUrl !== "") {
+
+            /*
+             * Only allow HTTPS Vercel Blob public URLs.
+             */
+
+            $isValidBlobUrl = preg_match(
+                '#^https://[a-z0-9-]+\.public\.blob\.vercel-storage\.com/.+$#i',
+                $imageUrl
+            );
+
+            if (!$isValidBlobUrl) {
+
+                $error = "Invalid image URL. Vercel Blob image ব্যবহার করুন।";
+
+            }
+
+        }
+
+
+        // =================================================
         // VERIFY CATEGORY
         // =================================================
 
@@ -124,7 +152,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 LIMIT 1
             ");
 
-            $categoryCheck->execute([$category_id]);
+            $categoryCheck->execute([
+                $category_id
+            ]);
 
             if (!$categoryCheck->fetch()) {
 
@@ -141,23 +171,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         if ($error === "") {
 
-            $slug = strtolower(
-                trim(
-                    preg_replace(
-                        '/[^a-zA-Z0-9]+/',
-                        '-',
-                        $title
-                    ),
-                    '-'
-                )
-            );
+            /*
+             * Use shared create_slug() function.
+             */
 
-
-            if ($slug === "") {
-
-                $slug = "news-" . time();
-
-            }
+            $slug = create_slug($title);
 
 
             // =================================================
@@ -176,7 +194,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     LIMIT 1
                 ");
 
-                $slugCheck->execute([$slug]);
+                $slugCheck->execute([
+                    $slug
+                ]);
 
                 if (!$slugCheck->fetch()) {
                     break;
@@ -185,228 +205,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $counter++;
 
                 $slug = $originalSlug . "-" . $counter;
-
-            }
-
-        }
-
-
-        // =================================================
-        // IMAGE UPLOAD
-        // =================================================
-
-        $imageName = "";
-
-        if (
-            $error === "" &&
-            isset($_FILES["image"]) &&
-            $_FILES["image"]["error"] !== UPLOAD_ERR_NO_FILE
-        ) {
-
-            // =================================================
-            // UPLOAD ERROR CHECK
-            // =================================================
-
-            if ($_FILES["image"]["error"] !== UPLOAD_ERR_OK) {
-
-                switch ($_FILES["image"]["error"]) {
-
-                    case UPLOAD_ERR_INI_SIZE:
-                        $error = "ছবির Size server limit-এর চেয়ে বেশি।";
-                        break;
-
-                    case UPLOAD_ERR_FORM_SIZE:
-                        $error = "ছবির Size form limit-এর চেয়ে বেশি।";
-                        break;
-
-                    case UPLOAD_ERR_PARTIAL:
-                        $error = "ছবি সম্পূর্ণ Upload হয়নি। আবার চেষ্টা করুন।";
-                        break;
-
-                    case UPLOAD_ERR_NO_TMP_DIR:
-                        $error = "Server-এর temporary upload directory পাওয়া যায়নি।";
-                        break;
-
-                    case UPLOAD_ERR_CANT_WRITE:
-                        $error = "Server-এ ছবিটি Write করা যাচ্ছে না।";
-                        break;
-
-                    case UPLOAD_ERR_EXTENSION:
-                        $error = "একটি PHP Extension-এর কারণে ছবি Upload বন্ধ হয়েছে।";
-                        break;
-
-                    default:
-                        $error = "ছবি Upload করতে সমস্যা হয়েছে। Error Code: " . (int)$_FILES["image"]["error"];
-                        break;
-                }
-
-            } else {
-
-                // =================================================
-                // ALLOWED IMAGE TYPES
-                // =================================================
-
-                $allowedTypes = [
-                    "image/jpeg" => "jpg",
-                    "image/png"  => "png",
-                    "image/webp" => "webp"
-                ];
-
-
-                // =================================================
-                // MAX IMAGE SIZE = 40MB
-                // =================================================
-
-                $maxSize = 40 * 1024 * 1024;
-
-
-                $tmpName = $_FILES["image"]["tmp_name"];
-                $fileSize = (int)$_FILES["image"]["size"];
-
-
-                // =================================================
-                // CHECK UPLOADED FILE
-                // =================================================
-
-                if (!is_uploaded_file($tmpName)) {
-
-                    $error = "Invalid image upload.";
-
-                }
-
-
-                // =================================================
-                // CHECK FILE SIZE
-                // =================================================
-
-                if (
-                    $error === "" &&
-                    $fileSize <= 0
-                ) {
-
-                    $error = "ছবির File Size সঠিক নয়।";
-
-                }
-
-
-                if (
-                    $error === "" &&
-                    $fileSize > $maxSize
-                ) {
-
-                    $error = "ছবির সর্বোচ্চ Size 40MB হতে পারবে।";
-
-                }
-
-
-                // =================================================
-                // REAL MIME TYPE CHECK
-                // =================================================
-
-                if ($error === "") {
-
-                    if (!class_exists("finfo")) {
-
-                        $error = "Server-এ FileInfo extension চালু নেই।";
-
-                    } else {
-
-                        $finfo = new finfo(FILEINFO_MIME_TYPE);
-
-                        $mimeType = $finfo->file($tmpName);
-
-                        if (!isset($allowedTypes[$mimeType])) {
-
-                            $error = "শুধু JPG, PNG অথবা WebP ছবি Upload করা যাবে।";
-
-                        }
-
-                    }
-
-                }
-
-
-                // =================================================
-                // CREATE IMAGE FILE NAME
-                // =================================================
-
-                if ($error === "") {
-
-                    $extension = $allowedTypes[$mimeType];
-
-                    $imageName =
-                        bin2hex(random_bytes(16))
-                        . "."
-                        . $extension;
-
-
-                    // =================================================
-                    // UPLOAD DIRECTORY
-                    // =================================================
-
-                    $uploadDirectory =
-                        dirname(__DIR__) . "/uploads/";
-
-
-                    // =================================================
-                    // CREATE DIRECTORY IF NOT EXISTS
-                    // =================================================
-
-                    if (!is_dir($uploadDirectory)) {
-
-                        if (
-                            !mkdir(
-                                $uploadDirectory,
-                                0755,
-                                true
-                            )
-                        ) {
-
-                            $error = "Upload directory তৈরি করা যায়নি।";
-
-                        }
-
-                    }
-
-
-                    // =================================================
-                    // CHECK DIRECTORY WRITABLE
-                    // =================================================
-
-                    if (
-                        $error === "" &&
-                        !is_writable($uploadDirectory)
-                    ) {
-
-                        $error = "Uploads folder-এ Write permission নেই।";
-
-                    }
-
-
-                    // =================================================
-                    // SAVE IMAGE
-                    // =================================================
-
-                    if ($error === "") {
-
-                        $destination =
-                            $uploadDirectory . $imageName;
-
-
-                        if (
-                            !move_uploaded_file(
-                                $tmpName,
-                                $destination
-                            )
-                        ) {
-
-                            $error = "ছবি Save করা যায়নি।";
-
-                        }
-
-                    }
-
-                }
 
             }
 
@@ -465,7 +263,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     $title,
                     $slug,
                     $category_id,
-                    $imageName,
+                    $imageUrl,
                     $content,
                     $reporter,
                     $status,
@@ -487,6 +285,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $title = "";
                 $headline = "";
                 $category_id = 0;
+                $imageUrl = "";
                 $content = "";
                 $reporter = "";
                 $status = "draft";
@@ -505,30 +304,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             } catch (PDOException $e) {
 
-                // =================================================
-                // DELETE IMAGE IF DATABASE INSERT FAILS
-                // =================================================
-
-                if (
-                    $imageName !== "" &&
-                    file_exists(
-                        dirname(__DIR__) .
-                        "/uploads/" .
-                        $imageName
-                    )
-                ) {
-
-                    @unlink(
-                        dirname(__DIR__) .
-                        "/uploads/" .
-                        $imageName
-                    );
-
-                }
-
-
                 $error =
-                    "সংবাদ Save করা যায়নি। Database Error হয়েছে।";
+                    "সংবাদ Save করা যায়নি। Database Error হয়েছে.";
 
             }
 
@@ -553,12 +330,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     >
 
     <title>
-        নতুন সংবাদ - <?php echo htmlspecialchars(SITE_NAME, ENT_QUOTES, "UTF-8"); ?>
+        নতুন সংবাদ - <?php echo e(SITE_NAME); ?>
     </title>
 
     <link
         rel="stylesheet"
-        href="<?php echo htmlspecialchars(SITE_URL, ENT_QUOTES, "UTF-8"); ?>/assets/style.css"
+        href="<?php echo e(SITE_URL); ?>/assets/style.css"
     >
 
     <style>
@@ -722,9 +499,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             background: #444;
         }
 
-
         /* =====================================================
-           IMAGE UPLOAD INFO
+           IMAGE UPLOAD
         ===================================================== */
 
         .image-upload-info {
@@ -737,6 +513,43 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             line-height: 1.6;
         }
 
+        .blob-upload-status {
+            margin-top: 10px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .upload-processing {
+            color: #8a5a00;
+        }
+
+        .upload-success {
+            color: #176b2c;
+        }
+
+        .upload-error {
+            color: #a00000;
+        }
+
+        .blob-upload-progress {
+            width: 100%;
+            height: 8px;
+            margin-top: 8px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .image-preview {
+            display: block;
+            max-width: 320px;
+            max-height: 220px;
+            margin-top: 15px;
+            border-radius: 6px;
+            object-fit: cover;
+            border: 1px solid #ddd;
+        }
 
         /* =====================================================
            MOBILE
@@ -778,7 +591,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
 <div class="admin-page">
 
-
     <!-- =================================================
          ADMIN HEADER
     ================================================= -->
@@ -789,11 +601,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             <div class="admin-logo">
 
-                <?php echo htmlspecialchars(
-                    SITE_NAME,
-                    ENT_QUOTES,
-                    "UTF-8"
-                ); ?>
+                <?php echo e(SITE_NAME); ?>
 
                 — Admin
 
@@ -802,40 +610,26 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             <div class="admin-user">
 
-                <?php echo htmlspecialchars(
-                    $_SESSION["admin_name"] ?? "Admin",
-                    ENT_QUOTES,
-                    "UTF-8"
+                <?php echo e(
+                    $_SESSION["admin_name"] ?? "Admin"
                 ); ?>
 
                 |
 
                 <a
-                    href="<?php echo htmlspecialchars(
-                        SITE_URL,
-                        ENT_QUOTES,
-                        "UTF-8"
-                    ); ?>/admin/index.php"
+                    href="<?php echo e(SITE_URL); ?>/admin/index.php"
                 >
                     Dashboard
                 </a>
 
                 <a
-                    href="<?php echo htmlspecialchars(
-                        SITE_URL,
-                        ENT_QUOTES,
-                        "UTF-8"
-                    ); ?>/admin/news-list.php"
+                    href="<?php echo e(SITE_URL); ?>/admin/news-list.php"
                 >
                     সকল সংবাদ
                 </a>
 
                 <a
-                    href="<?php echo htmlspecialchars(
-                        SITE_URL,
-                        ENT_QUOTES,
-                        "UTF-8"
-                    ); ?>/admin/logout.php"
+                    href="<?php echo e(SITE_URL); ?>/admin/logout.php"
                 >
                     Logout
                 </a>
@@ -854,7 +648,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <main class="admin-content">
 
         <div class="container">
-
 
             <div class="admin-title">
 
@@ -877,11 +670,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
                 <div class="alert alert-error">
 
-                    <?php echo htmlspecialchars(
-                        $error,
-                        ENT_QUOTES,
-                        "UTF-8"
-                    ); ?>
+                    <?php echo e($error); ?>
 
                 </div>
 
@@ -892,11 +681,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
                 <div class="alert alert-success">
 
-                    <?php echo htmlspecialchars(
-                        $success,
-                        ENT_QUOTES,
-                        "UTF-8"
-                    ); ?>
+                    <?php echo e($success); ?>
 
                 </div>
 
@@ -918,11 +703,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     <input
                         type="hidden"
                         name="csrf_token"
-                        value="<?php echo htmlspecialchars(
-                            $csrfToken,
-                            ENT_QUOTES,
-                            "UTF-8"
-                        ); ?>"
+                        value="<?php echo e($csrfToken); ?>"
                     >
 
 
@@ -942,11 +723,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                                 type="text"
                                 id="title"
                                 name="title"
-                                value="<?php echo htmlspecialchars(
-                                    $title,
-                                    ENT_QUOTES,
-                                    "UTF-8"
-                                ); ?>"
+                                value="<?php echo e($title); ?>"
                                 placeholder="সংবাদের মূল শিরোনাম"
                                 required
                             >
@@ -977,17 +754,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                                         value="<?php echo (int)$category["id"]; ?>"
                                         <?php
                                         echo (
-                                            $category_id == (int)$category["id"]
+                                            $category_id ==
+                                            (int)$category["id"]
                                         )
                                         ? "selected"
                                         : "";
                                         ?>
                                     >
 
-                                        <?php echo htmlspecialchars(
-                                            $category["name"],
-                                            ENT_QUOTES,
-                                            "UTF-8"
+                                        <?php echo e(
+                                            $category["name"]
                                         ); ?>
 
                                     </option>
@@ -1015,11 +791,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                             type="text"
                             id="headline"
                             name="headline"
-                            value="<?php echo htmlspecialchars(
-                                $headline,
-                                ENT_QUOTES,
-                                "UTF-8"
-                            ); ?>"
+                            value="<?php echo e($headline); ?>"
                             placeholder="সংবাদের সংক্ষিপ্ত Headline"
                         >
 
@@ -1041,6 +813,21 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                             id="image"
                             name="image"
                             accept="image/jpeg,image/png,image/webp"
+                            data-blob-upload
+                            data-preview="news-image-preview"
+                        >
+
+                        <input
+                            type="hidden"
+                            name="image_url"
+                            value="<?php echo e($imageUrl); ?>"
+                        >
+
+                        <img
+                            id="news-image-preview"
+                            class="image-preview hidden"
+                            src=""
+                            alt="Image Preview"
                         >
 
                         <div class="image-upload-info">
@@ -1048,6 +835,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                             JPG, PNG অথবা WebP ছবি Upload করতে পারবেন।
                             <br>
                             সর্বোচ্চ Image Size: <strong>40MB</strong>
+                            <br>
+                            ছবি সরাসরি Vercel Blob Storage-এ নিরাপদে Upload হবে।
 
                         </div>
 
@@ -1069,11 +858,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                             name="content"
                             placeholder="এখানে বিস্তারিত সংবাদ লিখুন..."
                             required
-                        ><?php echo htmlspecialchars(
-                            $content,
-                            ENT_QUOTES,
-                            "UTF-8"
-                        ); ?></textarea>
+                        ><?php echo e($content); ?></textarea>
 
                     </div>
 
@@ -1094,11 +879,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                                 type="text"
                                 id="reporter"
                                 name="reporter"
-                                value="<?php echo htmlspecialchars(
-                                    $reporter,
-                                    ENT_QUOTES,
-                                    "UTF-8"
-                                ); ?>"
+                                value="<?php echo e($reporter); ?>"
                                 placeholder="সাংবাদিকের নাম"
                             >
 
@@ -1160,11 +941,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
 
                         <a
-                            href="<?php echo htmlspecialchars(
-                                SITE_URL,
-                                ENT_QUOTES,
-                                "UTF-8"
-                            ); ?>/admin/index.php"
+                            href="<?php echo e(SITE_URL); ?>/admin/index.php"
                             class="btn btn-secondary"
                         >
                             Dashboard
@@ -1172,11 +949,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
 
                         <a
-                            href="<?php echo htmlspecialchars(
-                                SITE_URL,
-                                ENT_QUOTES,
-                                "UTF-8"
-                            ); ?>/admin/news-list.php"
+                            href="<?php echo e(SITE_URL); ?>/admin/news-list.php"
                             class="btn btn-secondary"
                         >
                             সকল সংবাদ
@@ -1189,7 +962,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             </div>
 
-
         </div>
 
     </main>
@@ -1199,3 +971,4 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 </body>
 
 </html>
+```
