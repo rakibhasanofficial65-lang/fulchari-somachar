@@ -2,8 +2,8 @@
 
 session_start();
 
-require_once "../config/config.php";
-require_once "../config/database.php";
+require_once dirname(__DIR__) . "/config/config.php";
+require_once dirname(__DIR__) . "/config/database.php";
 
 
 // =====================================================
@@ -11,7 +11,8 @@ require_once "../config/database.php";
 // =====================================================
 
 if (!isset($_SESSION["admin_id"])) {
-    header("Location: login.php");
+
+    header("Location: " . SITE_URL . "/admin/login.php");
     exit;
 }
 
@@ -23,7 +24,11 @@ if (!isset($_SESSION["admin_id"])) {
 $newsId = (int) ($_GET["id"] ?? 0);
 
 if ($newsId <= 0) {
-    header("Location: news-list.php");
+
+    header(
+        "Location: " . SITE_URL . "/admin/news-list.php"
+    );
+
     exit;
 }
 
@@ -44,7 +49,9 @@ $stmt->execute([$newsId]);
 $news = $stmt->fetch();
 
 if (!$news) {
+
     die("সংবাদ পাওয়া যায়নি।");
+
 }
 
 
@@ -69,7 +76,10 @@ $currentImage = $news["image"];
 // =====================================================
 
 $categoryStmt = $pdo->query("
-    SELECT id, name, slug
+    SELECT
+        id,
+        name,
+        slug
     FROM categories
     ORDER BY id ASC
 ");
@@ -173,17 +183,28 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         // DELETE OLD IMAGE?
         // =============================================
 
-        $removeImage = isset($_POST["remove_image"])
+        $removeImage =
+            isset($_POST["remove_image"])
             && $_POST["remove_image"] === "1";
 
 
-        if ($removeImage && !empty($currentImage)) {
+        if (
+            $removeImage
+            && !empty($currentImage)
+        ) {
 
-            $oldImagePath = "../uploads/" . $currentImage;
+            $oldImagePath =
+                dirname(__DIR__)
+                . "/uploads/"
+                . basename($currentImage);
 
-            if (file_exists($oldImagePath)) {
+
+            if (is_file($oldImagePath)) {
+
                 unlink($oldImagePath);
+
             }
+
 
             $imageName = "";
 
@@ -195,14 +216,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         // =============================================
 
         if (
-            isset($_FILES["image"]) &&
-            $_FILES["image"]["error"] !== UPLOAD_ERR_NO_FILE
+            isset($_FILES["image"])
+            && $_FILES["image"]["error"]
+            !== UPLOAD_ERR_NO_FILE
         ) {
 
 
-            if ($_FILES["image"]["error"] !== UPLOAD_ERR_OK) {
+            if (
+                $_FILES["image"]["error"]
+                !== UPLOAD_ERR_OK
+            ) {
 
-                $error = "ছবি Upload করতে সমস্যা হয়েছে।";
+                $error =
+                    "ছবি Upload করতে সমস্যা হয়েছে।";
 
             } else {
 
@@ -216,20 +242,31 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
                 $maxSize = 5 * 1024 * 1024;
 
-                $tmpName = $_FILES["image"]["tmp_name"];
-                $fileSize = $_FILES["image"]["size"];
+                $tmpName =
+                    $_FILES["image"]["tmp_name"];
+
+                $fileSize =
+                    $_FILES["image"]["size"];
 
 
                 // -----------------------------------------
                 // MIME TYPE
                 // -----------------------------------------
 
-                $finfo = new finfo(FILEINFO_MIME_TYPE);
+                $finfo =
+                    new finfo(FILEINFO_MIME_TYPE);
 
-                $mimeType = $finfo->file($tmpName);
+                $mimeType =
+                    $finfo->file($tmpName);
 
 
-                if (!in_array($mimeType, $allowedTypes, true)) {
+                if (
+                    !in_array(
+                        $mimeType,
+                        $allowedTypes,
+                        true
+                    )
+                ) {
 
                     $error =
                         "শুধু JPG, PNG অথবা WebP ছবি Upload করা যাবে।";
@@ -253,7 +290,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     ];
 
 
-                    $extension = $extensionMap[$mimeType];
+                    $extension =
+                        $extensionMap[$mimeType];
 
 
                     $newImageName =
@@ -262,7 +300,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         . $extension;
 
 
-                    $uploadDirectory = "../uploads/";
+                    // -----------------------------------------
+                    // UPLOAD DIRECTORY
+                    // -----------------------------------------
+
+                    $uploadDirectory =
+                        dirname(__DIR__)
+                        . "/uploads/";
 
 
                     if (!is_dir($uploadDirectory)) {
@@ -289,30 +333,38 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     ) {
 
 
-                        // Delete previous image
+                        // -------------------------------------
+                        // DELETE PREVIOUS IMAGE
+                        // -------------------------------------
 
                         if (
                             !empty($currentImage)
-                            && $currentImage !== $newImageName
+                            && $currentImage
+                            !== $newImageName
                         ) {
 
                             $oldImagePath =
                                 $uploadDirectory
-                                . $currentImage;
+                                . basename($currentImage);
 
 
                             if (
-                                file_exists($oldImagePath)
+                                is_file(
+                                    $oldImagePath
+                                )
                             ) {
 
-                                unlink($oldImagePath);
+                                unlink(
+                                    $oldImagePath
+                                );
 
                             }
 
                         }
 
 
-                        $imageName = $newImageName;
+                        $imageName =
+                            $newImageName;
 
 
                     } else {
@@ -336,11 +388,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         if ($error === "") {
 
 
-            // Published date
+            // -----------------------------------------
+            // PUBLISHED DATE
+            // -----------------------------------------
 
             if ($status === "published") {
 
-                if (!empty($news["published_at"])) {
+                if (
+                    !empty(
+                        $news["published_at"]
+                    )
+                ) {
 
                     $publishedAt =
                         $news["published_at"];
@@ -358,6 +416,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             }
 
+
+            // -----------------------------------------
+            // UPDATE
+            // -----------------------------------------
 
             $updateStmt = $pdo->prepare("
                 UPDATE news
@@ -405,13 +467,21 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 "সংবাদ সফলভাবে Update হয়েছে।";
 
 
-            // Update current values
+            // -----------------------------------------
+            // UPDATE CURRENT VALUES
+            // -----------------------------------------
 
-            $currentImage = $imageName;
+            $currentImage =
+                $imageName;
 
-            $news["image"] = $imageName;
+            $news["image"] =
+                $imageName;
 
-            $news["published_at"] = $publishedAt;
+            $news["slug"] =
+                $slug;
+
+            $news["published_at"] =
+                $publishedAt;
 
         }
 
@@ -435,20 +505,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     >
 
     <title>
-        সংবাদ Edit - <?php echo SITE_NAME; ?>
+        সংবাদ Edit -
+        <?php echo htmlspecialchars(SITE_NAME); ?>
     </title>
 
     <link
         rel="stylesheet"
-        href="../assets/style.css"
+        href="<?php echo SITE_URL; ?>/assets/style.css"
     >
 
 
     <style>
-
-        /* =================================================
-           ADMIN
-        ================================================= */
 
         .admin-page {
             min-height: 100vh;
@@ -492,10 +559,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
 
 
-        /* =================================================
-           CONTENT
-        ================================================= */
-
         .admin-content {
             padding: 35px 0;
         }
@@ -516,10 +579,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             color: #777;
         }
 
-
-        /* =================================================
-           FORM
-        ================================================= */
 
         .news-form-box {
             background: #fff;
@@ -550,6 +609,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             border-radius: 5px;
             font-family: inherit;
             font-size: 16px;
+            box-sizing: border-box;
         }
 
 
@@ -575,20 +635,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
 
 
-        /* =================================================
-           FORM ROW
-        ================================================= */
-
         .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
         }
 
-
-        /* =================================================
-           ALERT
-        ================================================= */
 
         .alert {
             padding: 12px 15px;
@@ -611,10 +663,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
 
 
-        /* =================================================
-           CURRENT IMAGE
-        ================================================= */
-
         .current-image-box {
             margin-top: 12px;
             padding: 12px;
@@ -630,7 +678,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             height: 140px;
             object-fit: cover;
             border-radius: 5px;
-            margin-bottom: 10px;
+            margin: 10px 0;
         }
 
 
@@ -647,10 +695,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             width: auto;
         }
 
-
-        /* =================================================
-           BUTTONS
-        ================================================= */
 
         .form-actions {
             display: flex;
@@ -703,10 +747,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             background: #10521f;
         }
 
-
-        /* =================================================
-           MOBILE
-        ================================================= */
 
         @media (max-width: 700px) {
 
@@ -764,9 +804,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         <div class="container admin-header-inner">
 
+
             <div class="admin-logo">
 
-                <?php echo SITE_NAME; ?> — Admin
+                <?php echo htmlspecialchars(SITE_NAME); ?>
+                — Admin
 
             </div>
 
@@ -781,17 +823,23 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 |
 
 
-                <a href="index.php">
+                <a
+                    href="<?php echo SITE_URL; ?>/admin/index.php"
+                >
                     Dashboard
                 </a>
 
 
-                <a href="news-list.php">
+                <a
+                    href="<?php echo SITE_URL; ?>/admin/news-list.php"
+                >
                     News List
                 </a>
 
 
-                <a href="logout.php">
+                <a
+                    href="<?php echo SITE_URL; ?>/admin/logout.php"
+                >
                     Logout
                 </a>
 
@@ -903,7 +951,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                                 <?php foreach ($categories as $category): ?>
 
                                     <option
-                                        value="<?php echo $category["id"]; ?>"
+                                        value="<?php echo (int)$category["id"]; ?>"
                                         <?php
                                         echo (
                                             $category_id
@@ -980,11 +1028,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
 
                                 <img
-                                    src="../uploads/<?php
-                                        echo htmlspecialchars(
-                                            $currentImage
-                                        );
-                                    ?>"
+                                    src="<?php echo SITE_URL; ?>/uploads/<?php echo htmlspecialchars(basename($currentImage)); ?>"
                                     alt=""
                                     class="current-image"
                                 >
@@ -1104,22 +1148,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
 
                         <a
-                            href="news-list.php"
+                            href="<?php echo SITE_URL; ?>/admin/news-list.php"
                             class="btn btn-secondary"
                         >
                             News List
                         </a>
 
 
-                        <a
-                            href="../news.php?slug=<?php
-                                echo urlencode($news["slug"]);
-                            ?>"
-                            target="_blank"
-                            class="btn btn-view"
-                        >
-                            সংবাদ দেখুন
-                        </a>
+                        <?php if (!empty($news["slug"])): ?>
+
+                            <a
+                                href="<?php echo SITE_URL; ?>/news/<?php echo urlencode($news["slug"]); ?>"
+                                target="_blank"
+                                class="btn btn-view"
+                            >
+                                সংবাদ দেখুন
+                            </a>
+
+                        <?php endif; ?>
 
 
                     </div>

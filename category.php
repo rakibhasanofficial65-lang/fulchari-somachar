@@ -1,7 +1,8 @@
 <?php
 
-require_once "config/config.php";
-require_once "config/database.php";
+require_once __DIR__ . "/config/config.php";
+require_once __DIR__ . "/config/database.php";
+require_once __DIR__ . "/includes/functions.php";
 
 
 // =====================================================
@@ -10,9 +11,15 @@ require_once "config/database.php";
 
 $slug = trim($_GET["slug"] ?? "");
 
+
+// =====================================================
+// INVALID SLUG
+// =====================================================
+
 if ($slug === "") {
-    header("Location: index.php");
-    exit;
+
+    redirect(site_url());
+
 }
 
 
@@ -20,96 +27,123 @@ if ($slug === "") {
 // GET CATEGORY
 // =====================================================
 
-$categoryStmt = $pdo->prepare("
-    SELECT id, name, slug
-    FROM categories
-    WHERE slug = ?
-    LIMIT 1
-");
+$category = get_category_by_slug(
+    $pdo,
+    $slug
+);
 
-$categoryStmt->execute([$slug]);
 
-$category = $categoryStmt->fetch();
-
+// =====================================================
+// CATEGORY NOT FOUND
+// =====================================================
 
 if (!$category) {
 
     http_response_code(404);
 
-    die("Category পাওয়া যায়নি।");
+    $pageTitle =
+        "বিভাগ পাওয়া যায়নি - " . SITE_NAME;
 
+    $pageDescription =
+        "আপনি যে সংবাদ বিভাগটি খুঁজছেন সেটি পাওয়া যায়নি।";
+
+    $canonicalUrl =
+        site_url("404");
+
+    $ogImage =
+        site_url("assets/logo.png");
+
+    require_once __DIR__ . "/includes/header.php";
+    require_once __DIR__ . "/includes/navbar.php";
+
+    ?>
+
+    <main class="category-page">
+
+        <div class="container">
+
+            <div class="category-empty">
+
+                <h1>
+                    বিভাগ পাওয়া যায়নি
+                </h1>
+
+                <p>
+                    আপনি যে সংবাদ বিভাগটি খুঁজছেন
+                    সেটি পাওয়া যায়নি।
+                </p>
+
+                <a
+                    href="<?php echo e(site_url()); ?>"
+                    class="category-back-button"
+                >
+                    হোম পেজে ফিরে যান
+                </a>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <?php
+
+    require_once __DIR__ . "/includes/footer.php";
+
+    exit;
 }
 
 
 // =====================================================
-// GET NEWS
+// GET CATEGORY NEWS
 // =====================================================
 
-$newsStmt = $pdo->prepare("
-    SELECT
-        news.*,
-        categories.name AS category_name,
-        categories.slug AS category_slug
-    FROM news
-    LEFT JOIN categories
-        ON news.category_id = categories.id
-    WHERE news.category_id = ?
-    AND news.status = 'published'
-    ORDER BY news.published_at DESC, news.id DESC
-    LIMIT 30
-");
+$categoryNews = get_news_by_category(
+    $pdo,
+    $category["slug"],
+    30
+);
 
-$newsStmt->execute([
-    $category["id"]
-]);
 
-$categoryNews = $newsStmt->fetchAll();
+// =====================================================
+// SEO
+// =====================================================
+
+$pageTitle =
+    $category["name"] .
+    " — সর্বশেষ সংবাদ | " .
+    SITE_NAME;
+
+
+$pageDescription =
+    $category["name"] .
+    " বিভাগের সর্বশেষ সংবাদ। " .
+    SITE_NAME .
+    " এ পড়ুন সর্বশেষ খবর, প্রতিবেদন ও সংবাদ।";
+
+
+$canonicalUrl =
+    category_url($category["slug"]);
+
+
+$ogImage =
+    site_url("assets/logo.png");
+
+
+// =====================================================
+// HEADER
+// =====================================================
+
+require_once __DIR__ . "/includes/header.php";
+
+
+// =====================================================
+// NAVBAR
+// =====================================================
+
+require_once __DIR__ . "/includes/navbar.php";
 
 ?>
-
-<!DOCTYPE html>
-
-<html lang="bn">
-
-<head>
-
-<meta charset="UTF-8">
-
-<meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
->
-
-<meta
-    name="description"
-    content="<?php
-        echo htmlspecialchars(
-            $category["name"] .
-            " - " .
-            SITE_NAME .
-            " এর সর্বশেষ সংবাদ"
-        );
-    ?>"
->
-
-<title>
-
-<?php echo htmlspecialchars(
-    $category["name"]
-); ?>
-
-|
-
-<?php echo SITE_NAME; ?>
-
-</title>
-
-
-<link
-    rel="stylesheet"
-    href="assets/style.css"
->
-
 
 <style>
 
@@ -124,6 +158,37 @@ $categoryNews = $newsStmt->fetchAll();
     min-height: 100vh;
 
     padding: 35px 0 50px;
+
+}
+
+
+/* =====================================================
+   BREADCRUMB
+===================================================== */
+
+.category-breadcrumb {
+
+    margin-bottom: 15px;
+
+    font-size: 13px;
+
+    color: #777;
+
+}
+
+
+.category-breadcrumb a {
+
+    color: #b30000;
+
+    text-decoration: none;
+
+}
+
+
+.category-breadcrumb a:hover {
+
+    text-decoration: underline;
 
 }
 
@@ -156,9 +221,11 @@ $categoryNews = $newsStmt->fetchAll();
 
     font-size: 32px;
 
+    line-height: 1.4;
+
     color: #111;
 
-    margin-bottom: 5px;
+    margin: 0 0 5px;
 
 }
 
@@ -169,27 +236,7 @@ $categoryNews = $newsStmt->fetchAll();
 
     font-size: 14px;
 
-}
-
-
-/* =====================================================
-   BREADCRUMB
-===================================================== */
-
-.category-breadcrumb {
-
-    margin-bottom: 15px;
-
-    font-size: 13px;
-
-    color: #777;
-
-}
-
-
-.category-breadcrumb a {
-
-    color: #b30000;
+    margin: 0;
 
 }
 
@@ -353,6 +400,8 @@ $categoryNews = $newsStmt->fetchAll();
 
     object-fit: contain;
 
+    display: block;
+
 }
 
 
@@ -396,6 +445,10 @@ $categoryNews = $newsStmt->fetchAll();
 }
 
 
+/* =====================================================
+   TITLE
+===================================================== */
+
 .category-card-title {
 
     font-family:
@@ -407,7 +460,7 @@ $categoryNews = $newsStmt->fetchAll();
 
     line-height: 1.5;
 
-    margin-bottom: 9px;
+    margin: 0 0 9px;
 
 }
 
@@ -415,6 +468,8 @@ $categoryNews = $newsStmt->fetchAll();
 .category-card-title a {
 
     color: #171717;
+
+    text-decoration: none;
 
 }
 
@@ -426,6 +481,10 @@ $categoryNews = $newsStmt->fetchAll();
 }
 
 
+/* =====================================================
+   HEADLINE
+===================================================== */
+
 .category-card-headline {
 
     color: #666;
@@ -434,10 +493,14 @@ $categoryNews = $newsStmt->fetchAll();
 
     line-height: 1.7;
 
-    margin-bottom: 13px;
+    margin: 0 0 13px;
 
 }
 
+
+/* =====================================================
+   META
+===================================================== */
 
 .category-card-meta {
 
@@ -469,6 +532,10 @@ $categoryNews = $newsStmt->fetchAll();
 }
 
 
+/* =====================================================
+   READ MORE
+===================================================== */
+
 .category-card-read {
 
     display: inline-block;
@@ -480,6 +547,15 @@ $categoryNews = $newsStmt->fetchAll();
     font-size: 14px;
 
     font-weight: bold;
+
+    text-decoration: none;
+
+}
+
+
+.category-card-read:hover {
+
+    color: #800000;
 
 }
 
@@ -513,7 +589,7 @@ $categoryNews = $newsStmt->fetchAll();
 
 
 /* =====================================================
-   NO NEWS
+   EMPTY
 ===================================================== */
 
 .category-empty {
@@ -531,11 +607,12 @@ $categoryNews = $newsStmt->fetchAll();
 }
 
 
+.category-empty h1,
 .category-empty h2 {
 
     font-size: 28px;
 
-    margin-bottom: 8px;
+    margin: 0 0 10px;
 
 }
 
@@ -543,6 +620,42 @@ $categoryNews = $newsStmt->fetchAll();
 .category-empty p {
 
     color: #777;
+
+    line-height: 1.8;
+
+    margin: 0;
+
+}
+
+
+/* =====================================================
+   BACK BUTTON
+===================================================== */
+
+.category-back-button {
+
+    display: inline-block;
+
+    margin-top: 20px;
+
+    padding: 11px 22px;
+
+    background: #b30000;
+
+    color: #fff;
+
+    text-decoration: none;
+
+    border-radius: 5px;
+
+    font-weight: bold;
+
+}
+
+
+.category-back-button:hover {
+
+    background: #800000;
 
 }
 
@@ -615,109 +728,33 @@ $categoryNews = $newsStmt->fetchAll();
 
     }
 
+
+    .category-card-meta {
+
+        align-items: flex-start;
+
+        flex-direction: column;
+
+    }
+
+
+    .category-empty {
+
+        padding: 50px 18px;
+
+    }
+
+
+    .category-empty h1,
+    .category-empty h2 {
+
+        font-size: 23px;
+
+    }
+
 }
 
 </style>
-
-</head>
-
-
-<body>
-
-
-<!-- =====================================================
-     HEADER
-===================================================== -->
-
-<header class="site-header">
-
-    <div class="container header-inner">
-
-        <div class="logo-area">
-
-            <a
-                href="index.php"
-                class="logo"
-            >
-                ফুলছড়ি সমাচার
-            </a>
-
-            <div class="tagline">
-
-                সত্যের পক্ষে, মানুষের পাশে
-
-            </div>
-
-        </div>
-
-    </div>
-
-</header>
-
-
-<!-- =====================================================
-     NAVBAR
-===================================================== -->
-
-<nav class="navbar">
-
-    <div class="container">
-
-        <ul class="nav-menu">
-
-            <li>
-                <a href="index.php">
-                    হোম
-                </a>
-            </li>
-
-            <li>
-                <a href="category.php?slug=fulchari">
-                    ফুলছড়ি
-                </a>
-            </li>
-
-            <li>
-                <a href="category.php?slug=national">
-                    জাতীয়
-                </a>
-            </li>
-
-            <li>
-                <a href="category.php?slug=politics">
-                    রাজনীতি
-                </a>
-            </li>
-
-            <li>
-                <a href="category.php?slug=corruption">
-                    দুর্নীতি
-                </a>
-            </li>
-
-            <li>
-                <a href="category.php?slug=sports">
-                    খেলার খবর
-                </a>
-            </li>
-
-            <li>
-                <a href="category.php?slug=entertainment">
-                    বিনোদন
-                </a>
-            </li>
-
-            <li>
-                <a href="epaper.php">
-                    ই-পেপার
-                </a>
-            </li>
-
-        </ul>
-
-    </div>
-
-</nav>
 
 
 <!-- =====================================================
@@ -726,322 +763,346 @@ $categoryNews = $newsStmt->fetchAll();
 
 <main class="category-page">
 
-<div class="container">
-
-
-    <!-- BREADCRUMB -->
-
-    <div class="category-breadcrumb">
-
-        <a href="index.php">
-            হোম
-        </a>
-
-        &nbsp; / &nbsp;
-
-        <?php echo htmlspecialchars(
-            $category["name"]
-        ); ?>
-
-    </div>
-
-
-    <!-- CATEGORY HEADER -->
-
-    <div class="category-header">
-
-        <h1>
-
-            <?php echo htmlspecialchars(
-                $category["name"]
-            ); ?>
-
-        </h1>
-
-        <p>
-
-            <?php echo htmlspecialchars(
-                $category["name"]
-            ); ?>
-
-            বিভাগের সর্বশেষ সংবাদ
-
-        </p>
-
-    </div>
-
-
-    <?php if (count($categoryNews) > 0): ?>
+    <div class="container">
 
 
         <!-- =================================================
-             NEWS GRID
+             BREADCRUMB
         ================================================= -->
 
-        <div class="category-news-grid">
+        <div class="category-breadcrumb">
 
+            <a href="<?php echo e(site_url()); ?>">
+                হোম
+            </a>
 
-            <?php foreach (
-                $categoryNews
-                as $news
-            ): ?>
+            &nbsp; / &nbsp;
 
-
-                <article class="category-card">
-
-
-                    <!-- IMAGE -->
-
-                    <div class="category-card-image">
-
-
-                        <?php if (!empty($news["image"])): ?>
-
-                            <a
-                                href="news.php?slug=<?php
-                                    echo urlencode(
-                                        $news["slug"]
-                                    );
-                                ?>"
-                            >
-
-                                <img
-                                    src="uploads/<?php
-                                        echo htmlspecialchars(
-                                            $news["image"]
-                                        );
-                                    ?>"
-                                    alt="<?php
-                                        echo htmlspecialchars(
-                                            $news["title"]
-                                        );
-                                    ?>"
-                                    loading="lazy"
-                                >
-
-                            </a>
-
-                        <?php else: ?>
-
-                            <div class="category-no-image">
-
-                                ফুলছড়ি সমাচার
-
-                            </div>
-
-                        <?php endif; ?>
-
-
-                        <!-- LOGO -->
-
-                        <div class="category-card-logo">
-
-                            <img
-                                src="assets/logo.png"
-                                alt="ফুলছড়ি সমাচার"
-                            >
-
-                        </div>
-
-
-                        <!-- BADGE -->
-
-                        <div class="category-card-badge">
-
-                            <?php echo htmlspecialchars(
-                                $category["name"]
-                            ); ?>
-
-                        </div>
-
-
-                    </div>
-
-
-                    <!-- CONTENT -->
-
-                    <div class="category-card-content">
-
-
-                        <h2 class="category-card-title">
-
-                            <a
-                                href="news.php?slug=<?php
-                                    echo urlencode(
-                                        $news["slug"]
-                                    );
-                                ?>"
-                            >
-
-                                <?php echo htmlspecialchars(
-                                    $news["title"]
-                                ); ?>
-
-                            </a>
-
-                        </h2>
-
-
-                        <?php if (!empty($news["headline"])): ?>
-
-                            <p class="category-card-headline">
-
-                                <?php echo htmlspecialchars(
-                                    mb_substr(
-                                        $news["headline"],
-                                        0,
-                                        160
-                                    )
-                                ); ?>
-
-                            </p>
-
-                        <?php else: ?>
-
-                            <p class="category-card-headline">
-
-                                <?php echo htmlspecialchars(
-                                    mb_substr(
-                                        strip_tags(
-                                            $news["content"]
-                                        ),
-                                        0,
-                                        160
-                                    )
-                                ); ?>
-
-                            </p>
-
-                        <?php endif; ?>
-
-
-                        <div class="category-card-meta">
-
-
-                            <?php if (!empty($news["reporter"])): ?>
-
-                                <span
-                                    class="category-card-reporter"
-                                >
-
-                                    রিপোর্ট:
-                                    <?php echo htmlspecialchars(
-                                        $news["reporter"]
-                                    ); ?>
-
-                                </span>
-
-                            <?php else: ?>
-
-                                <span>
-                                    <?php echo SITE_NAME; ?>
-                                </span>
-
-                            <?php endif; ?>
-
-
-                            <?php if (!empty($news["published_at"])): ?>
-
-                                <span>
-
-                                    <?php
-
-                                    echo date(
-                                        "d M Y",
-                                        strtotime(
-                                            $news["published_at"]
-                                        )
-                                    );
-
-                                    ?>
-
-                                </span>
-
-                            <?php endif; ?>
-
-
-                        </div>
-
-
-                        <a
-                            href="news.php?slug=<?php
-                                echo urlencode(
-                                    $news["slug"]
-                                );
-                            ?>"
-                            class="category-card-read"
-                        >
-
-                            বিস্তারিত পড়ুন →
-
-                        </a>
-
-
-                    </div>
-
-
-                </article>
-
-
-            <?php endforeach; ?>
-
+            <?php echo e(
+                $category["name"]
+            ); ?>
 
         </div>
 
 
-    <?php else: ?>
-
-
         <!-- =================================================
-             EMPTY
+             CATEGORY HEADER
         ================================================= -->
 
-        <div class="category-empty">
+        <div class="category-header">
 
-            <h2>
-                এই বিভাগে এখনো কোনো সংবাদ নেই
-            </h2>
+            <h1>
+
+                <?php echo e(
+                    $category["name"]
+                ); ?>
+
+            </h1>
 
             <p>
-                নতুন সংবাদ Published হলে
-                এখানে automatically দেখা যাবে।
+
+                <?php echo e(
+                    $category["name"]
+                ); ?>
+
+                বিভাগের সর্বশেষ সংবাদ
+
             </p>
 
         </div>
 
 
-    <?php endif; ?>
+        <?php if (!empty($categoryNews)): ?>
 
 
-</div>
+            <!-- =================================================
+                 NEWS GRID
+            ================================================= -->
+
+            <div class="category-news-grid">
+
+
+                <?php foreach (
+                    $categoryNews
+                    as $index => $news
+                ): ?>
+
+
+                    <article class="category-card">
+
+
+                        <!-- =====================================
+                             IMAGE
+                        ====================================== -->
+
+                        <div class="category-card-image">
+
+
+                            <?php if (!empty($news["image"])): ?>
+
+                                <a
+                                    href="<?php echo e(
+                                        news_url($news["slug"])
+                                    ); ?>"
+                                    aria-label="<?php echo e(
+                                        $news["title"]
+                                    ); ?>"
+                                >
+
+                                    <img
+                                        src="<?php echo e(
+                                            image_url(
+                                                $news["image"]
+                                            )
+                                        ); ?>"
+                                        alt="<?php echo e(
+                                            $news["title"]
+                                        ); ?>"
+                                        loading="<?php
+                                            echo $index < 3
+                                                ? "eager"
+                                                : "lazy";
+                                        ?>"
+                                        decoding="async"
+                                    >
+
+                                </a>
+
+                            <?php else: ?>
+
+                                <div class="category-no-image">
+
+                                    ফুলছড়ি সমাচার
+
+                                </div>
+
+                            <?php endif; ?>
+
+
+                            <!-- =================================
+                                 LOGO
+                            ================================== -->
+
+                            <div class="category-card-logo">
+
+                                <img
+                                    src="<?php echo e(
+                                        site_url(
+                                            "assets/logo.png"
+                                        )
+                                    ); ?>"
+                                    alt="<?php echo e(
+                                        SITE_NAME
+                                    ); ?>"
+                                >
+
+                            </div>
+
+
+                            <!-- =================================
+                                 BADGE
+                            ================================== -->
+
+                            <div class="category-card-badge">
+
+                                <?php echo e(
+                                    $category["name"]
+                                ); ?>
+
+                            </div>
+
+
+                        </div>
+
+
+                        <!-- =====================================
+                             CONTENT
+                        ====================================== -->
+
+                        <div class="category-card-content">
+
+
+                            <!-- TITLE -->
+
+                            <h2 class="category-card-title">
+
+                                <a
+                                    href="<?php echo e(
+                                        news_url(
+                                            $news["slug"]
+                                        )
+                                    ); ?>"
+                                >
+
+                                    <?php echo e(
+                                        $news["title"]
+                                    ); ?>
+
+                                </a>
+
+                            </h2>
+
+
+                            <!-- HEADLINE -->
+
+                            <?php
+
+                            $cardText = "";
+
+                            if (!empty($news["headline"])) {
+
+                                $cardText =
+                                    $news["headline"];
+
+                            } elseif (
+                                !empty($news["content"])
+                            ) {
+
+                                $cardText =
+                                    strip_tags(
+                                        $news["content"]
+                                    );
+
+                            }
+
+                            ?>
+
+                            <?php if (
+                                !empty($cardText)
+                            ): ?>
+
+                                <p class="category-card-headline">
+
+                                    <?php echo e(
+                                        news_excerpt(
+                                            $cardText,
+                                            160
+                                        )
+                                    ); ?>
+
+                                </p>
+
+                            <?php endif; ?>
+
+
+                            <!-- META -->
+
+                            <div class="category-card-meta">
+
+
+                                <?php if (
+                                    !empty($news["reporter"])
+                                ): ?>
+
+                                    <span
+                                        class="category-card-reporter"
+                                    >
+
+                                        রিপোর্ট:
+                                        <?php echo e(
+                                            $news["reporter"]
+                                        ); ?>
+
+                                    </span>
+
+                                <?php else: ?>
+
+                                    <span>
+                                        <?php echo e(
+                                            SITE_NAME
+                                        ); ?>
+                                    </span>
+
+                                <?php endif; ?>
+
+
+                                <?php if (
+                                    !empty(
+                                        $news["published_at"]
+                                    )
+                                ): ?>
+
+                                    <span>
+
+                                        <?php echo e(
+                                            format_date_bn(
+                                                $news[
+                                                    "published_at"
+                                                ]
+                                            )
+                                        ); ?>
+
+                                    </span>
+
+                                <?php endif; ?>
+
+
+                            </div>
+
+
+                            <!-- READ MORE -->
+
+                            <a
+                                href="<?php echo e(
+                                    news_url(
+                                        $news["slug"]
+                                    )
+                                ); ?>"
+                                class="category-card-read"
+                            >
+
+                                বিস্তারিত পড়ুন →
+
+                            </a>
+
+
+                        </div>
+
+
+                    </article>
+
+
+                <?php endforeach; ?>
+
+
+            </div>
+
+
+        <?php else: ?>
+
+
+            <!-- =================================================
+                 EMPTY STATE
+            ================================================= -->
+
+            <div class="category-empty">
+
+                <h2>
+                    এই বিভাগে এখনো কোনো সংবাদ নেই
+                </h2>
+
+                <p>
+                    নতুন সংবাদ Published হলে
+                    এখানে automatically দেখা যাবে।
+                </p>
+
+            </div>
+
+
+        <?php endif; ?>
+
+
+    </div>
 
 </main>
 
 
-<!-- =====================================================
-     FOOTER
-===================================================== -->
+<?php
 
-<footer class="site-footer">
+// =====================================================
+// FOOTER
+// =====================================================
 
-    <div class="container">
+require_once __DIR__ . "/includes/footer.php";
 
-        <p>
-
-            &copy;
-            <?php echo date("Y"); ?>
-
-            <?php echo SITE_NAME; ?>.
-
-            সর্বস্বত্ব সংরক্ষিত।
-
-        </p>
-
-    </div>
-
-</footer>
-
-
-</body>
-
-</html>
+?>

@@ -2,9 +2,8 @@
 
 session_start();
 
-require_once "../config/config.php";
-require_once "../config/database.php";
-
+require_once dirname(__DIR__) . "/config/config.php";
+require_once dirname(__DIR__) . "/config/database.php";
 
 // ================= AUTH CHECK =================
 

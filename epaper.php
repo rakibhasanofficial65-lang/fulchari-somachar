@@ -1,8 +1,8 @@
 <?php
 
-require_once "config/config.php";
-require_once "config/database.php";
-
+require_once __DIR__ . "/config/config.php";
+require_once __DIR__ . "/config/database.php";
+require_once __DIR__ . "/includes/functions.php";
 
 // =====================================================
 // SELECT DATE
@@ -10,8 +10,6 @@ require_once "config/database.php";
 
 $selectedDate = $_GET["date"] ?? date("Y-m-d");
 
-
-// নিরাপদ Date format check
 $dateObject = DateTime::createFromFormat("Y-m-d", $selectedDate);
 
 if (
@@ -21,22 +19,27 @@ if (
     $selectedDate = date("Y-m-d");
 }
 
+$selectedDateObject = new DateTime($selectedDate);
+
+$today = new DateTime(date("Y-m-d"));
+
 
 // =====================================================
 // PREVIOUS / NEXT DATE
 // =====================================================
 
-$selectedDateObject = new DateTime($selectedDate);
+$previousDateObject = clone $selectedDateObject;
+$previousDateObject->modify("-1 day");
 
-$previousDate = clone $selectedDateObject;
-$previousDate->modify("-1 day");
+$nextDateObject = clone $selectedDateObject;
+$nextDateObject->modify("+1 day");
 
-$nextDate = clone $selectedDateObject;
-$nextDate->modify("+1 day");
+$previousDate = $previousDateObject->format("Y-m-d");
+$nextDate = $nextDateObject->format("Y-m-d");
 
 
 // =====================================================
-// GET PUBLISHED NEWS OF SELECTED DATE
+// GET ALL PUBLISHED NEWS OF SELECTED DATE
 // =====================================================
 
 $stmt = $pdo->prepare("
@@ -48,8 +51,11 @@ $stmt = $pdo->prepare("
     LEFT JOIN categories
         ON news.category_id = categories.id
     WHERE news.status = 'published'
-    AND DATE(news.published_at) = ?
-    ORDER BY news.published_at DESC, news.id DESC
+      AND news.published_at IS NOT NULL
+      AND DATE(news.published_at) = ?
+    ORDER BY
+        news.published_at DESC,
+        news.id DESC
 ");
 
 $stmt->execute([$selectedDate]);
@@ -58,12 +64,27 @@ $epaperNews = $stmt->fetchAll();
 
 
 // =====================================================
-// GROUP NEWS BY CATEGORY
+// LEAD NEWS
+// =====================================================
+
+$leadNews = $epaperNews[0] ?? null;
+
+
+// =====================================================
+// GROUP REMAINING NEWS BY CATEGORY
 // =====================================================
 
 $groupedNews = [];
 
 foreach ($epaperNews as $item) {
+
+    // Lead news আলাদা থাকবে
+    if (
+        $leadNews &&
+        (int)$item["id"] === (int)$leadNews["id"]
+    ) {
+        continue;
+    }
 
     $categoryName = !empty($item["category_name"])
         ? $item["category_name"]
@@ -74,7 +95,7 @@ foreach ($epaperNews as $item) {
 
 
 // =====================================================
-// DATE IN BANGLA
+// BANGLA DATE
 // =====================================================
 
 $banglaMonths = [
@@ -92,48 +113,501 @@ $banglaMonths = [
     12 => "ডিসেম্বর"
 ];
 
+$banglaDays = [
+    "Sunday" => "রবিবার",
+    "Monday" => "সোমবার",
+    "Tuesday" => "মঙ্গলবার",
+    "Wednesday" => "বুধবার",
+    "Thursday" => "বৃহস্পতিবার",
+    "Friday" => "শুক্রবার",
+    "Saturday" => "শনিবার"
+];
+
 $day = $selectedDateObject->format("d");
 $month = $banglaMonths[(int)$selectedDateObject->format("m")];
 $year = $selectedDateObject->format("Y");
+$dayName = $banglaDays[$selectedDateObject->format("l")];
 
 $displayDate = $day . " " . $month . " " . $year;
+$displayFullDate = $dayName . ", " . $displayDate;
 
 
 // =====================================================
-// PAGE TITLE
+// PAGE SEO
 // =====================================================
 
-$pageTitle = "ই-পেপার | " . SITE_NAME;
+$pageTitle = "ই-পেপার | " . SITE_NAME . " | " . $displayDate;
+
+$pageDescription =
+    SITE_NAME .
+    " এর " .
+    $displayDate .
+    " তারিখের দৈনিক ই-পেপার। ফুলছড়ি, জাতীয়, রাজনীতি, দুর্নীতি, খেলাধুলা ও বিনোদনের সর্বশেষ সংবাদ।";
+
+$canonicalUrl = epaper_url() . "?date=" . rawurlencode($selectedDate);
+
+$ogImage = site_url() . "/assets/logo.png";
+
+
+// =====================================================
+// HELPER: NEWS TIME
+// =====================================================
+
+function epaper_time($datetime)
+{
+    if (empty($datetime)) {
+        return "";
+    }
+
+    return date("h:i A", strtotime($datetime));
+}
+
+
+// =====================================================
+// HELPER: NEWS SHORT TEXT
+// =====================================================
+
+function epaper_summary($news, $length = 180)
+{
+    $text = "";
+
+    if (!empty($news["headline"])) {
+
+        $text = $news["headline"];
+
+    } elseif (!empty($news["content"])) {
+
+        $text = strip_tags($news["content"]);
+
+    }
+
+    $text = trim(
+        preg_replace(
+            "/\s+/u",
+            " ",
+            $text
+        )
+    );
+
+    if ($text === "") {
+        return "";
+    }
+
+    return mb_substr($text, 0, $length);
+}
 
 ?>
 
-<!DOCTYPE html>
+<?php require __DIR__ . "/includes/header.php"; ?>
 
-<html lang="bn">
+<main class="epaper-page">
 
-<head>
+    <!-- =================================================
+         TOP CONTROLS
+    ================================================= -->
 
-<meta charset="UTF-8">
+    <div class="epaper-controls">
 
-<meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
->
+        <form
+            method="GET"
+            action="<?php echo e(epaper_url()); ?>"
+            class="date-form"
+        >
 
-<meta
-    name="description"
-    content="<?php echo SITE_NAME; ?> - প্রতিদিনের অনলাইন ই-পেপার"
->
+            <label for="epaper-date">
+                ই-পেপার তারিখ
+            </label>
 
-<title>
-    <?php echo $pageTitle; ?>
-</title>
+            <input
+                type="date"
+                id="epaper-date"
+                name="date"
+                value="<?php echo e($selectedDate); ?>"
+                max="<?php echo e(date("Y-m-d")); ?>"
+            >
+
+            <button
+                type="submit"
+                class="epaper-btn"
+            >
+                দেখুন
+            </button>
+
+        </form>
 
 
-<link
-    rel="stylesheet"
-    href="assets/style.css"
->
+        <div class="epaper-navigation">
+
+            <a
+                href="<?php echo e(epaper_url()); ?>?date=<?php echo e($previousDate); ?>"
+                class="epaper-btn"
+            >
+                ← আগের দিন
+            </a>
+
+
+            <?php if ($selectedDate < $today->format("Y-m-d")): ?>
+
+                <a
+                    href="<?php echo e(epaper_url()); ?>?date=<?php echo e($nextDate); ?>"
+                    class="epaper-btn"
+                >
+                    পরের দিন →
+                </a>
+
+            <?php endif; ?>
+
+
+            <button
+                type="button"
+                onclick="window.print()"
+                class="epaper-btn print-btn"
+            >
+                🖨 প্রিন্ট / PDF
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- =================================================
+         NEWSPAPER
+    ================================================= -->
+
+    <div class="newspaper">
+
+        <!-- =================================================
+             NEWSPAPER HEADER
+        ================================================= -->
+
+        <header class="newspaper-header">
+
+            <img
+                src="<?php echo e(site_url()); ?>/assets/logo.png"
+                alt="<?php echo e(SITE_NAME); ?>"
+                class="newspaper-logo"
+            >
+
+
+            <div class="newspaper-motto">
+                সত্যের পক্ষে, মানুষের পাশে
+            </div>
+
+
+            <div class="newspaper-date">
+
+                দৈনিক ই-পেপার
+
+                <span>|</span>
+
+                <?php echo e($displayFullDate); ?>
+
+            </div>
+
+        </header>
+
+
+        <?php if ($leadNews): ?>
+
+            <!-- =================================================
+                 LEAD NEWS
+            ================================================= -->
+
+            <section class="lead-news">
+
+                <div class="lead-news-image-wrap">
+
+                    <?php if (!empty($leadNews["image"])): ?>
+
+                        <a
+                            href="<?php echo e(news_url($leadNews["slug"])); ?>"
+                        >
+
+                            <img
+                                src="<?php echo e(image_url($leadNews["image"])); ?>"
+                                alt="<?php echo e($leadNews["title"]); ?>"
+                                class="lead-image"
+                            >
+
+                        </a>
+
+                    <?php else: ?>
+
+                        <div class="lead-no-image">
+                            <?php echo e(SITE_NAME); ?>
+                        </div>
+
+                    <?php endif; ?>
+
+                </div>
+
+
+                <div class="lead-content">
+
+                    <?php if (!empty($leadNews["category_name"])): ?>
+
+                        <div class="lead-category">
+
+                            <?php echo e($leadNews["category_name"]); ?>
+
+                        </div>
+
+                    <?php endif; ?>
+
+
+                    <h1 class="lead-title">
+
+                        <a
+                            href="<?php echo e(news_url($leadNews["slug"])); ?>"
+                        >
+                            <?php echo e($leadNews["title"]); ?>
+                        </a>
+
+                    </h1>
+
+
+                    <?php
+                    $leadSummary = epaper_summary($leadNews, 420);
+                    ?>
+
+                    <?php if ($leadSummary !== ""): ?>
+
+                        <p class="lead-headline">
+
+                            <?php echo e($leadSummary); ?>
+
+                        </p>
+
+                    <?php endif; ?>
+
+
+                    <div class="lead-meta">
+
+                        <?php if (!empty($leadNews["reporter"])): ?>
+
+                            <span>
+                                রিপোর্ট:
+                                <?php echo e($leadNews["reporter"]); ?>
+                            </span>
+
+                            <span>|</span>
+
+                        <?php endif; ?>
+
+                        <span>
+                            <?php echo e(epaper_time($leadNews["published_at"])); ?>
+                        </span>
+
+                    </div>
+
+
+                    <a
+                        href="<?php echo e(news_url($leadNews["slug"])); ?>"
+                        class="read-more-btn"
+                    >
+                        বিস্তারিত পড়ুন →
+                    </a>
+
+                </div>
+
+            </section>
+
+
+            <!-- =================================================
+                 BREAKING / NEWS COUNT BAR
+            ================================================= -->
+
+            <div class="epaper-info-bar">
+
+                <div>
+                    <strong>
+                        আজকের সংবাদ
+                    </strong>
+
+                    <span>
+                        <?php echo bn_number(count($epaperNews)); ?>টি
+                    </span>
+                </div>
+
+                <div>
+                    <?php echo e($displayDate); ?>
+                </div>
+
+            </div>
+
+
+            <!-- =================================================
+                 ALL OTHER NEWS
+            ================================================= -->
+
+            <?php if (!empty($groupedNews)): ?>
+
+                <div class="epaper-grid">
+
+                    <?php foreach ($groupedNews as $categoryName => $categoryNews): ?>
+
+                        <section class="epaper-section">
+
+                            <div class="epaper-section-title">
+
+                                <span class="section-red-line"></span>
+
+                                <?php echo e($categoryName); ?>
+
+                            </div>
+
+
+                            <?php foreach ($categoryNews as $item): ?>
+
+                                <article class="epaper-item">
+
+
+                                    <?php if (!empty($item["image"])): ?>
+
+                                        <a
+                                            href="<?php echo e(news_url($item["slug"])); ?>"
+                                        >
+
+                                            <img
+                                                src="<?php echo e(image_url($item["image"])); ?>"
+                                                alt="<?php echo e($item["title"]); ?>"
+                                                class="epaper-item-image"
+                                                loading="lazy"
+                                            >
+
+                                        </a>
+
+                                    <?php endif; ?>
+
+
+                                    <div class="epaper-item-category">
+
+                                        <?php echo e($categoryName); ?>
+
+                                    </div>
+
+
+                                    <h2 class="epaper-item-title">
+
+                                        <a
+                                            href="<?php echo e(news_url($item["slug"])); ?>"
+                                        >
+
+                                            <?php echo e($item["title"]); ?>
+
+                                        </a>
+
+                                    </h2>
+
+
+                                    <?php
+                                    $shortText = epaper_summary(
+                                        $item,
+                                        180
+                                    );
+                                    ?>
+
+
+                                    <?php if ($shortText !== ""): ?>
+
+                                        <p class="epaper-item-text">
+
+                                            <?php echo e($shortText); ?>
+
+                                        </p>
+
+                                    <?php endif; ?>
+
+
+                                    <div class="epaper-item-meta">
+
+                                        <?php if (!empty($item["reporter"])): ?>
+
+                                            <span>
+                                                রিপোর্ট:
+                                                <?php echo e($item["reporter"]); ?>
+                                            </span>
+
+                                            <span>|</span>
+
+                                        <?php endif; ?>
+
+                                        <span>
+                                            <?php echo e(epaper_time($item["published_at"])); ?>
+                                        </span>
+
+                                    </div>
+
+                                </article>
+
+                            <?php endforeach; ?>
+
+                        </section>
+
+                    <?php endforeach; ?>
+
+                </div>
+
+            <?php endif; ?>
+
+
+        <?php else: ?>
+
+            <!-- =================================================
+                 NO NEWS
+            ================================================= -->
+
+            <div class="no-epaper-news">
+
+                <div class="empty-icon">
+                    📰
+                </div>
+
+                <h2>
+                    এই তারিখের কোনো সংবাদ নেই
+                </h2>
+
+                <p>
+                    <?php echo e($displayDate); ?>
+                    তারিখে কোনো Published News পাওয়া যায়নি।
+                </p>
+
+                <a
+                    href="<?php echo e(epaper_url()); ?>"
+                    class="epaper-btn"
+                >
+                    আজকের ই-পেপার দেখুন
+                </a>
+
+            </div>
+
+        <?php endif; ?>
+
+
+        <!-- =================================================
+             NEWSPAPER FOOTER
+        ================================================= -->
+
+        <footer class="epaper-footer">
+
+            <div class="footer-main-name">
+                <?php echo e(SITE_NAME); ?>
+            </div>
+
+            <div>
+                সত্যের পক্ষে, মানুষের পাশে
+            </div>
+
+            <div>
+                <?php echo e($displayDate); ?>
+            </div>
+
+        </footer>
+
+    </div>
+
+</main>
 
 
 <style>
@@ -144,7 +618,7 @@ $pageTitle = "ই-পেপার | " . SITE_NAME;
 
 .epaper-page {
 
-    background: #e9e9e9;
+    background: #e7e7e7;
 
     padding: 30px 0 60px;
 
@@ -154,28 +628,28 @@ $pageTitle = "ই-পেপার | " . SITE_NAME;
 
 
 /* =====================================================
-   TOP CONTROL
+   CONTROLS
 ===================================================== */
 
 .epaper-controls {
 
-    max-width: 1100px;
+    max-width: 1180px;
 
-    margin: 0 auto 20px;
+    margin: 0 auto 22px;
+
+    padding: 14px 18px;
 
     background: #fff;
 
-    border: 1px solid #ddd;
-
-    padding: 15px;
+    border: 1px solid #d5d5d5;
 
     display: flex;
 
-    align-items: center;
-
     justify-content: space-between;
 
-    gap: 12px;
+    align-items: center;
+
+    gap: 15px;
 
     flex-wrap: wrap;
 
@@ -190,46 +664,75 @@ $pageTitle = "ই-পেপার | " . SITE_NAME;
 
     gap: 8px;
 
+    flex-wrap: wrap;
+
 }
 
 
 .date-form label {
 
-    font-weight: bold;
+    font-weight: 700;
+
+    font-size: 14px;
 
 }
 
 
 .date-form input {
 
-    padding: 9px 10px;
+    height: 40px;
 
     border: 1px solid #bbb;
 
+    padding: 0 10px;
+
     border-radius: 4px;
+
+    background: #fff;
+
+}
+
+
+.epaper-navigation {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 7px;
+
+    flex-wrap: wrap;
 
 }
 
 
 .epaper-btn {
 
-    display: inline-block;
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    min-height: 40px;
+
+    padding: 0 14px;
 
     border: 0;
+
+    border-radius: 4px;
 
     background: #111;
 
     color: #fff;
 
-    padding: 9px 15px;
+    text-decoration: none;
 
-    border-radius: 4px;
+    font-size: 13px;
+
+    font-weight: 700;
 
     cursor: pointer;
-
-    font-size: 14px;
-
-    text-decoration: none;
 
 }
 
@@ -237,6 +740,8 @@ $pageTitle = "ই-পেপার | " . SITE_NAME;
 .epaper-btn:hover {
 
     background: #b30000;
+
+    color: #fff;
 
 }
 
@@ -254,18 +759,18 @@ $pageTitle = "ই-পেপার | " . SITE_NAME;
 
 .newspaper {
 
-    max-width: 1100px;
+    max-width: 1180px;
 
     margin: 0 auto;
 
+    padding: 30px 38px 40px;
+
     background: #fff;
 
-    padding: 30px 35px 45px;
+    border: 1px solid #c9c9c9;
 
     box-shadow:
-        0 5px 30px rgba(0,0,0,.15);
-
-    border: 1px solid #ccc;
+        0 8px 35px rgba(0,0,0,.15);
 
 }
 
@@ -278,72 +783,68 @@ $pageTitle = "ই-পেপার | " . SITE_NAME;
 
     text-align: center;
 
-    border-bottom: 5px double #111;
-
     padding-bottom: 18px;
 
-    margin-bottom: 20px;
+    margin-bottom: 24px;
+
+    border-bottom: 5px double #111;
 
 }
 
 
 .newspaper-logo {
 
-    width: 260px;
+    display: block;
 
-    max-height: 100px;
+    width: 280px;
+
+    max-width: 80%;
+
+    max-height: 105px;
 
     object-fit: contain;
 
-    margin: 0 auto 5px;
-
-    display: block;
+    margin: 0 auto 7px;
 
 }
 
 
-.newspaper-name {
+.newspaper-motto {
 
     font-family:
         Georgia,
         "Noto Serif Bengali",
         serif;
 
-    font-size: 45px;
-
-    font-weight: 900;
-
-    color: #111;
-
-    line-height: 1.2;
-
-}
-
-
-.newspaper-tagline {
-
     font-size: 14px;
 
     color: #555;
 
-    margin-top: 3px;
+    margin-bottom: 12px;
 
 }
 
 
 .newspaper-date {
 
-    margin-top: 10px;
-
-    padding: 7px 0;
-
     border-top: 1px solid #aaa;
 
     border-bottom: 1px solid #aaa;
 
+    padding: 8px 5px;
+
     font-size: 14px;
 
-    font-weight: bold;
+    font-weight: 700;
+
+}
+
+
+.newspaper-date span {
+
+    margin: 0 8px;
+
+    color: #b30000;
 
 }
 
@@ -356,24 +857,30 @@ $pageTitle = "ই-পেপার | " . SITE_NAME;
 
     display: grid;
 
-    grid-template-columns: 1.5fr 1fr;
+    grid-template-columns: 1.55fr 1fr;
 
-    gap: 25px;
+    gap: 28px;
 
-    padding-bottom: 25px;
+    padding-bottom: 26px;
 
-    margin-bottom: 25px;
-
-    border-bottom: 2px solid #111;
+    border-bottom: 3px solid #111;
 
 }
 
 
-.lead-image {
+.lead-news-image-wrap {
+
+    min-width: 0;
+
+}
+
+
+.lead-image,
+.lead-no-image {
 
     width: 100%;
 
-    height: 330px;
+    height: 390px;
 
     object-fit: cover;
 
@@ -384,11 +891,12 @@ $pageTitle = "ই-পেপার | " . SITE_NAME;
 
 .lead-no-image {
 
-    width: 100%;
-
-    height: 330px;
-
-    background: #ddd;
+    background:
+        linear-gradient(
+            135deg,
+            #ddd,
+            #aaa
+        );
 
     display: flex;
 
@@ -396,9 +904,22 @@ $pageTitle = "ই-পেপার | " . SITE_NAME;
 
     justify-content: center;
 
-    font-size: 20px;
+    color: #555;
 
-    color: #777;
+    font-size: 24px;
+
+    font-weight: 700;
+
+}
+
+
+.lead-content {
+
+    display: flex;
+
+    flex-direction: column;
+
+    justify-content: center;
 
 }
 
@@ -409,25 +930,25 @@ $pageTitle = "ই-পেপার | " . SITE_NAME;
 
     font-size: 14px;
 
-    font-weight: bold;
+    font-weight: 800;
 
-    margin-bottom: 8px;
+    margin-bottom: 9px;
 
 }
 
 
 .lead-title {
 
+    margin: 0 0 13px;
+
     font-family:
         Georgia,
         "Noto Serif Bengali",
         serif;
 
-    font-size: 31px;
+    font-size: 34px;
 
     line-height: 1.45;
-
-    margin-bottom: 12px;
 
 }
 
@@ -435,6 +956,8 @@ $pageTitle = "ই-পেপার | " . SITE_NAME;
 .lead-title a {
 
     color: #111;
+
+    text-decoration: none;
 
 }
 
@@ -448,85 +971,198 @@ $pageTitle = "ই-পেপার | " . SITE_NAME;
 
 .lead-headline {
 
-    font-size: 16px;
+    margin: 0 0 14px;
 
     color: #555;
 
-    line-height: 1.8;
+    font-size: 16px;
 
-    margin-bottom: 12px;
+    line-height: 1.85;
 
 }
 
 
 .lead-meta {
 
-    font-size: 13px;
+    display: flex;
 
-    color: #777;
+    flex-wrap: wrap;
+
+    gap: 7px;
+
+    padding-top: 10px;
 
     border-top: 1px solid #ddd;
 
-    padding-top: 10px;
+    color: #777;
+
+    font-size: 12px;
+
+}
+
+
+.read-more-btn {
+
+    align-self: flex-start;
+
+    margin-top: 18px;
+
+    display: inline-block;
+
+    padding: 9px 15px;
+
+    background: #111;
+
+    color: #fff;
+
+    text-decoration: none;
+
+    font-size: 13px;
+
+    font-weight: 700;
+
+}
+
+
+.read-more-btn:hover {
+
+    background: #b30000;
+
+    color: #fff;
 
 }
 
 
 /* =====================================================
-   NEWS COLUMNS
+   INFO BAR
 ===================================================== */
 
-.epaper-sections {
+.epaper-info-bar {
 
-    column-count: 3;
+    margin: 20px 0;
 
-    column-gap: 25px;
+    padding: 10px 13px;
+
+    border-top: 1px solid #bbb;
+
+    border-bottom: 1px solid #bbb;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 10px;
+
+    font-size: 13px;
 
 }
 
 
+.epaper-info-bar div:first-child {
+
+    display: flex;
+
+    gap: 10px;
+
+}
+
+
+.epaper-info-bar span {
+
+    color: #b30000;
+
+    font-weight: 800;
+
+}
+
+
+/* =====================================================
+   NEWS GRID
+===================================================== */
+
+.epaper-grid {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+
+    gap: 25px;
+
+    align-items: start;
+
+}
+
+
+/* =====================================================
+   SECTION
+===================================================== */
+
 .epaper-section {
 
-    break-inside: avoid;
+    min-width: 0;
 
-    margin-bottom: 25px;
+    border-top: 3px solid #111;
 
 }
 
 
 .epaper-section-title {
 
+    position: relative;
+
+    padding: 9px 10px;
+
+    margin-bottom: 13px;
+
+    background: #f1f1f1;
+
+    border-bottom: 1px solid #ccc;
+
     font-size: 19px;
 
-    font-weight: bold;
-
-    background: #111;
-
-    color: #fff;
-
-    padding: 7px 10px;
-
-    border-left: 5px solid #b30000;
-
-    margin-bottom: 12px;
+    font-weight: 800;
 
 }
 
 
+.section-red-line {
+
+    display: inline-block;
+
+    width: 5px;
+
+    height: 19px;
+
+    margin-right: 8px;
+
+    vertical-align: -3px;
+
+    background: #b30000;
+
+}
+
+
+/* =====================================================
+   NEWS ITEM
+===================================================== */
+
 .epaper-item {
 
+    padding-bottom: 16px;
+
+    margin-bottom: 16px;
+
     border-bottom: 1px solid #ccc;
-
-    padding-bottom: 13px;
-
-    margin-bottom: 14px;
 
 }
 
 
 .epaper-item:last-child {
 
-    border-bottom: 0;
+    margin-bottom: 0;
 
 }
 
@@ -535,29 +1171,42 @@ $pageTitle = "ই-পেপার | " . SITE_NAME;
 
     width: 100%;
 
-    height: 135px;
+    height: 175px;
 
     object-fit: cover;
 
     display: block;
 
-    margin-bottom: 8px;
+    margin-bottom: 9px;
+
+}
+
+
+.epaper-item-category {
+
+    color: #b30000;
+
+    font-size: 11px;
+
+    font-weight: 800;
+
+    margin-bottom: 4px;
 
 }
 
 
 .epaper-item-title {
 
+    margin: 0 0 7px;
+
     font-family:
         Georgia,
         "Noto Serif Bengali",
         serif;
 
-    font-size: 18px;
+    font-size: 19px;
 
     line-height: 1.5;
-
-    margin-bottom: 5px;
 
 }
 
@@ -565,6 +1214,8 @@ $pageTitle = "ই-পেপার | " . SITE_NAME;
 .epaper-item-title a {
 
     color: #222;
+
+    text-decoration: none;
 
 }
 
@@ -578,9 +1229,11 @@ $pageTitle = "ই-পেপার | " . SITE_NAME;
 
 .epaper-item-text {
 
-    font-size: 13px;
+    margin: 0;
 
     color: #666;
+
+    font-size: 13px;
 
     line-height: 1.7;
 
@@ -589,39 +1242,61 @@ $pageTitle = "ই-পেপার | " . SITE_NAME;
 
 .epaper-item-meta {
 
-    margin-top: 6px;
+    display: flex;
 
-    font-size: 11px;
+    flex-wrap: wrap;
+
+    gap: 6px;
+
+    margin-top: 8px;
 
     color: #999;
+
+    font-size: 11px;
 
 }
 
 
 /* =====================================================
-   NO NEWS
+   EMPTY
 ===================================================== */
 
 .no-epaper-news {
 
     text-align: center;
 
-    padding: 80px 20px;
+    padding: 90px 20px;
 
     border: 2px dashed #ccc;
 
-    color: #777;
+}
+
+
+.empty-icon {
+
+    font-size: 45px;
+
+    margin-bottom: 12px;
 
 }
 
 
 .no-epaper-news h2 {
 
-    font-size: 28px;
+    margin: 0 0 8px;
 
-    color: #333;
+    font-size: 27px;
 
-    margin-bottom: 8px;
+    color: #222;
+
+}
+
+
+.no-epaper-news p {
+
+    margin: 0 0 18px;
+
+    color: #777;
 
 }
 
@@ -632,30 +1307,43 @@ $pageTitle = "ই-পেপার | " . SITE_NAME;
 
 .epaper-footer {
 
-    margin-top: 35px;
+    margin-top: 30px;
 
     padding-top: 15px;
 
-    border-top: 4px double #111;
+    border-top: 5px double #111;
 
     text-align: center;
 
+    color: #777;
+
     font-size: 12px;
 
-    color: #777;
+    line-height: 1.9;
+
+}
+
+
+.footer-main-name {
+
+    color: #111;
+
+    font-weight: 800;
+
+    font-size: 15px;
 
 }
 
 
 /* =====================================================
-   MOBILE
+   TABLET
 ===================================================== */
 
-@media (max-width: 800px) {
+@media (max-width: 900px) {
 
     .newspaper {
 
-        padding: 20px;
+        padding: 25px;
 
     }
 
@@ -670,32 +1358,30 @@ $pageTitle = "ই-পেপার | " . SITE_NAME;
     .lead-image,
     .lead-no-image {
 
-        height: 260px;
+        height: 320px;
 
     }
 
 
-    .epaper-sections {
+    .epaper-grid {
 
-        column-count: 2;
-
-    }
-
-
-    .newspaper-name {
-
-        font-size: 34px;
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
 
     }
 
 }
 
 
-@media (max-width: 550px) {
+/* =====================================================
+   MOBILE
+===================================================== */
+
+@media (max-width: 600px) {
 
     .epaper-page {
 
-        padding: 15px 0 30px;
+        padding: 12px 0 30px;
 
     }
 
@@ -704,42 +1390,7 @@ $pageTitle = "ই-পেপার | " . SITE_NAME;
 
         margin: 0 10px 15px;
 
-    }
-
-
-    .newspaper {
-
-        width: 96%;
-
-        padding: 15px;
-
-    }
-
-
-    .newspaper-logo {
-
-        width: 190px;
-
-    }
-
-
-    .newspaper-name {
-
-        font-size: 27px;
-
-    }
-
-
-    .lead-title {
-
-        font-size: 24px;
-
-    }
-
-
-    .epaper-sections {
-
-        column-count: 1;
+        padding: 12px;
 
     }
 
@@ -755,13 +1406,104 @@ $pageTitle = "ই-পেপার | " . SITE_NAME;
 
         flex: 1;
 
+        min-width: 120px;
+
+    }
+
+
+    .epaper-navigation {
+
+        width: 100%;
+
+    }
+
+
+    .epaper-navigation .epaper-btn {
+
+        flex: 1;
+
+    }
+
+
+    .newspaper {
+
+        width: 96%;
+
+        padding: 16px;
+
+    }
+
+
+    .newspaper-logo {
+
+        width: 210px;
+
+    }
+
+
+    .newspaper-motto {
+
+        font-size: 12px;
+
+    }
+
+
+    .newspaper-date {
+
+        font-size: 12px;
+
+    }
+
+
+    .lead-image,
+    .lead-no-image {
+
+        height: 240px;
+
+    }
+
+
+    .lead-title {
+
+        font-size: 25px;
+
+    }
+
+
+    .lead-headline {
+
+        font-size: 14px;
+
+    }
+
+
+    .epaper-grid {
+
+        grid-template-columns: 1fr;
+
+    }
+
+
+    .epaper-item-image {
+
+        height: 210px;
+
+    }
+
+
+    .epaper-info-bar {
+
+        align-items: flex-start;
+
+        flex-direction: column;
+
     }
 
 }
 
 
 /* =====================================================
-   PRINT
+   PRINT / SAVE PDF
 ===================================================== */
 
 @media print {
@@ -770,22 +1512,22 @@ $pageTitle = "ই-পেপার | " . SITE_NAME;
 
         size: A4;
 
-        margin: 10mm;
+        margin: 9mm;
 
     }
 
 
     body {
 
-        background: #fff;
+        background: #fff !important;
 
     }
 
 
     .site-header,
     .navbar,
-    .epaper-controls,
-    .site-footer {
+    .site-footer,
+    .epaper-controls {
 
         display: none !important;
 
@@ -811,23 +1553,33 @@ $pageTitle = "ই-পেপার | " . SITE_NAME;
 
         padding: 0;
 
-        box-shadow: none;
-
         border: 0;
 
-    }
-
-
-    .newspaper-logo {
-
-        width: 220px;
+        box-shadow: none;
 
     }
 
 
-    .lead-image {
+    .newspaper-header {
 
-        height: 280px;
+        break-inside: avoid;
+
+    }
+
+
+    .lead-news {
+
+        grid-template-columns: 1.5fr 1fr;
+
+        break-inside: avoid;
+
+    }
+
+
+    .lead-image,
+    .lead-no-image {
+
+        height: 260px;
 
     }
 
@@ -839,9 +1591,33 @@ $pageTitle = "ই-পেপার | " . SITE_NAME;
     }
 
 
-    .epaper-sections {
+    .epaper-grid {
 
-        column-count: 3;
+        grid-template-columns:
+            repeat(3, minmax(0, 1fr));
+
+        gap: 16px;
+
+    }
+
+
+    .epaper-section {
+
+        break-inside: avoid;
+
+    }
+
+
+    .epaper-item {
+
+        break-inside: avoid;
+
+    }
+
+
+    .epaper-item-image {
+
+        height: 130px;
 
     }
 
@@ -857,9 +1633,9 @@ $pageTitle = "ই-পেপার | " . SITE_NAME;
 
     a {
 
-        text-decoration: none;
-
         color: #000 !important;
+
+        text-decoration: none !important;
 
     }
 
@@ -867,593 +1643,5 @@ $pageTitle = "ই-পেপার | " . SITE_NAME;
 
 </style>
 
-</head>
 
-
-<body>
-
-
-<!-- =====================================================
-     NAVBAR
-===================================================== -->
-
-<nav class="navbar">
-
-    <div class="container">
-
-        <ul class="nav-menu">
-
-            <li>
-                <a href="index.php">হোম</a>
-            </li>
-
-            <li>
-                <a href="category.php?slug=fulchari">
-                    ফুলছড়ি
-                </a>
-            </li>
-
-            <li>
-                <a href="category.php?slug=national">
-                    জাতীয়
-                </a>
-            </li>
-
-            <li>
-                <a href="category.php?slug=politics">
-                    রাজনীতি
-                </a>
-            </li>
-
-            <li>
-                <a href="category.php?slug=corruption">
-                    দুর্নীতি
-                </a>
-            </li>
-
-            <li>
-                <a href="category.php?slug=sports">
-                    খেলার খবর
-                </a>
-            </li>
-
-            <li>
-                <a href="category.php?slug=entertainment">
-                    বিনোদন
-                </a>
-            </li>
-
-            <li>
-                <a href="epaper.php">
-                    ই-পেপার
-                </a>
-            </li>
-
-        </ul>
-
-    </div>
-
-</nav>
-
-
-<!-- =====================================================
-     E-PAPER
-===================================================== -->
-
-<main class="epaper-page">
-
-
-    <!-- CONTROLS -->
-
-    <div class="epaper-controls">
-
-
-        <form
-            method="GET"
-            class="date-form"
-        >
-
-            <label for="date">
-                ই-পেপার তারিখ:
-            </label>
-
-            <input
-                type="date"
-                id="date"
-                name="date"
-                value="<?php echo htmlspecialchars($selectedDate); ?>"
-            >
-
-            <button
-                type="submit"
-                class="epaper-btn"
-            >
-                দেখুন
-            </button>
-
-        </form>
-
-
-        <div>
-
-
-            <a
-                href="epaper.php?date=<?php
-                    echo $previousDate->format("Y-m-d");
-                ?>"
-                class="epaper-btn"
-            >
-                ← আগের দিন
-            </a>
-
-
-            <?php if ($selectedDate < date("Y-m-d")): ?>
-
-                <a
-                    href="epaper.php?date=<?php
-                        echo $nextDate->format("Y-m-d");
-                    ?>"
-                    class="epaper-btn"
-                >
-                    পরের দিন →
-                </a>
-
-            <?php endif; ?>
-
-
-            <button
-                type="button"
-                onclick="window.print()"
-                class="epaper-btn print-btn"
-            >
-                🖨 Print / PDF
-            </button>
-
-
-        </div>
-
-
-    </div>
-
-
-    <!-- =================================================
-         NEWSPAPER
-    ================================================= -->
-
-    <div class="newspaper">
-
-
-        <!-- NEWSPAPER HEADER -->
-
-        <header class="newspaper-header">
-
-
-            <img
-                src="assets/logo.png"
-                alt="ফুলছড়ি সমাচার"
-                class="newspaper-logo"
-            >
-
-
-            <div class="newspaper-date">
-
-                দৈনিক ই-পেপার |
-                <?php echo htmlspecialchars($displayDate); ?>
-
-            </div>
-
-
-        </header>
-
-
-        <?php if (count($epaperNews) > 0): ?>
-
-
-            <!-- =================================================
-                 LEAD NEWS
-            ================================================= -->
-
-            <?php $leadNews = $epaperNews[0]; ?>
-
-
-            <section class="lead-news">
-
-
-                <!-- LEAD IMAGE -->
-
-                <div>
-
-
-                    <?php if (!empty($leadNews["image"])): ?>
-
-                        <img
-                            src="uploads/<?php
-                                echo htmlspecialchars(
-                                    $leadNews["image"]
-                                );
-                            ?>"
-                            alt="<?php
-                                echo htmlspecialchars(
-                                    $leadNews["title"]
-                                );
-                            ?>"
-                            class="lead-image"
-                        >
-
-                    <?php else: ?>
-
-                        <div class="lead-no-image">
-                            ফুলছড়ি সমাচার
-                        </div>
-
-                    <?php endif; ?>
-
-
-                </div>
-
-
-                <!-- LEAD CONTENT -->
-
-                <div>
-
-
-                    <?php if (!empty($leadNews["category_name"])): ?>
-
-                        <div class="lead-category">
-
-                            <?php echo htmlspecialchars(
-                                $leadNews["category_name"]
-                            ); ?>
-
-                        </div>
-
-                    <?php endif; ?>
-
-
-                    <h1 class="lead-title">
-
-                        <a
-                            href="news.php?slug=<?php
-                                echo urlencode(
-                                    $leadNews["slug"]
-                                );
-                            ?>"
-                        >
-
-                            <?php echo htmlspecialchars(
-                                $leadNews["title"]
-                            ); ?>
-
-                        </a>
-
-                    </h1>
-
-
-                    <?php if (!empty($leadNews["headline"])): ?>
-
-                        <div class="lead-headline">
-
-                            <?php echo htmlspecialchars(
-                                $leadNews["headline"]
-                            ); ?>
-
-                        </div>
-
-                    <?php else: ?>
-
-                        <div class="lead-headline">
-
-                            <?php
-
-                            echo htmlspecialchars(
-                                mb_substr(
-                                    strip_tags(
-                                        $leadNews["content"]
-                                    ),
-                                    0,
-                                    300
-                                )
-                            );
-
-                            ?>
-
-                        </div>
-
-                    <?php endif; ?>
-
-
-                    <div class="lead-meta">
-
-                        <?php if (!empty($leadNews["reporter"])): ?>
-
-                            রিপোর্ট:
-                            <?php echo htmlspecialchars(
-                                $leadNews["reporter"]
-                            ); ?>
-
-                            &nbsp; | &nbsp;
-
-                        <?php endif; ?>
-
-
-                        <?php
-
-                        echo date(
-                            "h:i A",
-                            strtotime(
-                                $leadNews["published_at"]
-                            )
-                        );
-
-                        ?>
-
-                    </div>
-
-
-                </div>
-
-
-            </section>
-
-
-            <!-- =================================================
-                 OTHER NEWS
-            ================================================= -->
-
-            <?php if (count($epaperNews) > 1): ?>
-
-
-                <div class="epaper-sections">
-
-
-                    <?php foreach (
-                        $groupedNews
-                        as $categoryName => $categoryNews
-                    ): ?>
-
-
-                        <section class="epaper-section">
-
-
-                            <div class="epaper-section-title">
-
-                                <?php echo htmlspecialchars(
-                                    $categoryName
-                                ); ?>
-
-                            </div>
-
-
-                            <?php foreach (
-                                $categoryNews
-                                as $item
-                            ): ?>
-
-
-                                <?php
-
-                                // Lead news আবার দেখানো হবে না
-
-                                if (
-                                    (int)$item["id"]
-                                    ===
-                                    (int)$leadNews["id"]
-                                ) {
-                                    continue;
-                                }
-
-                                ?>
-
-
-                                <article class="epaper-item">
-
-
-                                    <?php if (!empty($item["image"])): ?>
-
-                                        <a
-                                            href="news.php?slug=<?php
-                                                echo urlencode(
-                                                    $item["slug"]
-                                                );
-                                            ?>"
-                                        >
-
-                                            <img
-                                                src="uploads/<?php
-                                                    echo htmlspecialchars(
-                                                        $item["image"]
-                                                    );
-                                                ?>"
-                                                alt="<?php
-                                                    echo htmlspecialchars(
-                                                        $item["title"]
-                                                    );
-                                                ?>"
-                                                class="epaper-item-image"
-                                            >
-
-                                        </a>
-
-                                    <?php endif; ?>
-
-
-                                    <h2 class="epaper-item-title">
-
-                                        <a
-                                            href="news.php?slug=<?php
-                                                echo urlencode(
-                                                    $item["slug"]
-                                                );
-                                            ?>"
-                                        >
-
-                                            <?php echo htmlspecialchars(
-                                                $item["title"]
-                                            ); ?>
-
-                                        </a>
-
-                                    </h2>
-
-
-                                    <?php
-
-                                    $shortText = "";
-
-                                    if (
-                                        !empty(
-                                            $item["headline"]
-                                        )
-                                    ) {
-
-                                        $shortText =
-                                            $item["headline"];
-
-                                    } else {
-
-                                        $shortText =
-                                            strip_tags(
-                                                $item["content"]
-                                            );
-
-                                    }
-
-                                    ?>
-
-
-                                    <div class="epaper-item-text">
-
-                                        <?php echo htmlspecialchars(
-                                            mb_substr(
-                                                $shortText,
-                                                0,
-                                                180
-                                            )
-                                        ); ?>
-
-                                    </div>
-
-
-                                    <div class="epaper-item-meta">
-
-                                        <?php if (
-                                            !empty(
-                                                $item["reporter"]
-                                            )
-                                        ): ?>
-
-                                            রিপোর্ট:
-                                            <?php echo htmlspecialchars(
-                                                $item["reporter"]
-                                            ); ?>
-
-                                            &nbsp; | &nbsp;
-
-                                        <?php endif; ?>
-
-
-                                        <?php
-
-                                        echo date(
-                                            "h:i A",
-                                            strtotime(
-                                                $item["published_at"]
-                                            )
-                                        );
-
-                                        ?>
-
-                                    </div>
-
-
-                                </article>
-
-
-                            <?php endforeach; ?>
-
-
-                        </section>
-
-
-                    <?php endforeach; ?>
-
-
-                </div>
-
-
-            <?php endif; ?>
-
-
-        <?php else: ?>
-
-
-            <!-- =================================================
-                 NO NEWS
-            ================================================= -->
-
-            <div class="no-epaper-news">
-
-                <h2>
-                    এই তারিখে কোনো সংবাদ নেই
-                </h2>
-
-                <p>
-                    এই তারিখে কোনো Published News পাওয়া যায়নি।
-                </p>
-
-            </div>
-
-
-        <?php endif; ?>
-
-
-        <!-- NEWSPAPER FOOTER -->
-
-        <div class="epaper-footer">
-
-            <?php echo SITE_NAME; ?>
-
-            &nbsp; | &nbsp;
-
-            সত্যের পক্ষে, মানুষের পাশে
-
-            &nbsp; | &nbsp;
-
-            <?php echo htmlspecialchars($displayDate); ?>
-
-        </div>
-
-
-    </div>
-
-
-</main>
-
-
-<!-- =====================================================
-     FOOTER
-===================================================== -->
-
-<footer class="site-footer">
-
-    <div class="container">
-
-        <p>
-
-            &copy;
-            <?php echo date("Y"); ?>
-
-            <?php echo SITE_NAME; ?>.
-
-            সর্বস্বত্ব সংরক্ষিত।
-
-        </p>
-
-    </div>
-
-</footer>
-
-
-</body>
-
-</html>
+<?php require __DIR__ . "/includes/footer.php"; ?>

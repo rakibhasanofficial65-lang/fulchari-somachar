@@ -2,8 +2,8 @@
 
 session_start();
 
-require_once "../config/config.php";
-require_once "../config/database.php";
+require_once dirname(__DIR__) . "/config/config.php";
+require_once dirname(__DIR__) . "/config/database.php";
 
 
 // =====================================================
@@ -11,11 +11,20 @@ require_once "../config/database.php";
 // =====================================================
 
 if (!isset($_SESSION["admin_id"])) {
-
-    header("Location: login.php");
+    header("Location: " . SITE_URL . "/admin/login.php");
     exit;
-
 }
+
+
+// =====================================================
+// CSRF TOKEN
+// =====================================================
+
+if (empty($_SESSION["csrf_token"])) {
+    $_SESSION["csrf_token"] = bin2hex(random_bytes(32));
+}
+
+$csrfToken = $_SESSION["csrf_token"];
 
 
 // =====================================================
@@ -24,6 +33,13 @@ if (!isset($_SESSION["admin_id"])) {
 
 $error = "";
 $success = "";
+
+$title = "";
+$headline = "";
+$category_id = 0;
+$content = "";
+$reporter = "";
+$status = "draft";
 
 
 // =====================================================
@@ -45,81 +61,140 @@ $categories = $categoryStmt->fetchAll();
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-    $title = trim($_POST["title"] ?? "");
-    $headline = trim($_POST["headline"] ?? "");
-    $category_id = (int)($_POST["category_id"] ?? 0);
-    $content = trim($_POST["content"] ?? "");
-    $reporter = trim($_POST["reporter"] ?? "");
-    $status = $_POST["status"] ?? "draft";
-
-
     // =================================================
-    // VALIDATION
+    // CSRF CHECK
     // =================================================
 
-    if ($title === "") {
+    $submittedToken = $_POST["csrf_token"] ?? "";
 
-        $error = "সংবাদের Title দিন।";
+    if (
+        !hash_equals(
+            $_SESSION["csrf_token"],
+            $submittedToken
+        )
+    ) {
 
-    } elseif ($category_id <= 0) {
-
-        $error = "একটি Category নির্বাচন করুন।";
-
-    } elseif ($content === "") {
-
-        $error = "সংবাদের Content লিখুন।";
-
-    } elseif (!in_array($status, ["draft", "published"], true)) {
-
-        $error = "Invalid status.";
+        $error = "Security verification failed. আবার চেষ্টা করুন।";
 
     } else {
 
+        $title = trim($_POST["title"] ?? "");
+        $headline = trim($_POST["headline"] ?? "");
+        $category_id = (int)($_POST["category_id"] ?? 0);
+        $content = trim($_POST["content"] ?? "");
+        $reporter = trim($_POST["reporter"] ?? "");
+        $status = $_POST["status"] ?? "draft";
 
-        // =============================================
-        // SLUG
-        // =============================================
 
-        $slug = strtolower(trim(preg_replace(
-            '/[^a-zA-Z0-9]+/',
-            '-',
-            $title
-        ), '-'));
+        // =================================================
+        // VALIDATION
+        // =================================================
 
-        if ($slug === "") {
+        if ($title === "") {
 
-            $slug = "news-" . time();
+            $error = "সংবাদের Title দিন।";
+
+        } elseif ($category_id <= 0) {
+
+            $error = "একটি Category নির্বাচন করুন।";
+
+        } elseif ($content === "") {
+
+            $error = "সংবাদের Content লিখুন।";
+
+        } elseif (!in_array($status, ["draft", "published"], true)) {
+
+            $error = "Invalid status.";
+
+        } else {
+
+
+            // =============================================
+            // VERIFY CATEGORY EXISTS
+            // =============================================
+
+            $categoryCheck = $pdo->prepare("
+                SELECT id
+                FROM categories
+                WHERE id = ?
+                LIMIT 1
+            ");
+
+            $categoryCheck->execute([$category_id]);
+
+            if (!$categoryCheck->fetch()) {
+
+                $error = "নির্বাচিত Category পাওয়া যায়নি।";
+
+            }
 
         }
 
 
-        // =============================================
-        // CHECK DUPLICATE SLUG
-        // =============================================
+        // =================================================
+        // CREATE SLUG
+        // =================================================
 
-        $slugCheck = $pdo->prepare("
-            SELECT id
-            FROM news
-            WHERE slug = ?
-            LIMIT 1
-        ");
+        if ($error === "") {
 
-        $slugCheck->execute([$slug]);
+            $slug = strtolower(
+                trim(
+                    preg_replace(
+                        '/[^a-zA-Z0-9]+/',
+                        '-',
+                        $title
+                    ),
+                    '-'
+                )
+            );
 
-        if ($slugCheck->fetch()) {
 
-            $slug .= "-" . time();
+            if ($slug === "") {
+
+                $slug = "news-" . time();
+
+            }
+
+
+            // =============================================
+            // CHECK DUPLICATE SLUG
+            // =============================================
+
+            $originalSlug = $slug;
+            $counter = 1;
+
+            while (true) {
+
+                $slugCheck = $pdo->prepare("
+                    SELECT id
+                    FROM news
+                    WHERE slug = ?
+                    LIMIT 1
+                ");
+
+                $slugCheck->execute([$slug]);
+
+                if (!$slugCheck->fetch()) {
+                    break;
+                }
+
+                $counter++;
+
+                $slug = $originalSlug . "-" . $counter;
+
+            }
 
         }
 
 
-        // =============================================
+        // =================================================
         // IMAGE UPLOAD
-        // =============================================
+        // =================================================
 
         $imageName = "";
 
         if (
+            $error === "" &&
             isset($_FILES["image"]) &&
             $_FILES["image"]["error"] !== UPLOAD_ERR_NO_FILE
         ) {
@@ -131,61 +206,130 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             } else {
 
                 $allowedTypes = [
-                    "image/jpeg",
-                    "image/png",
-                    "image/webp"
+                    "image/jpeg" => "jpg",
+                    "image/png"  => "png",
+                    "image/webp" => "webp"
                 ];
 
                 $maxSize = 5 * 1024 * 1024;
 
                 $tmpName = $_FILES["image"]["tmp_name"];
-                $originalName = $_FILES["image"]["name"];
-                $fileSize = $_FILES["image"]["size"];
+                $fileSize = (int) $_FILES["image"]["size"];
+
+
+                // -----------------------------------------
+                // CHECK FILE EXISTS
+                // -----------------------------------------
+
+                if (!is_uploaded_file($tmpName)) {
+
+                    $error = "Invalid image upload.";
+
+                }
+
+
+                // -----------------------------------------
+                // FILE SIZE
+                // -----------------------------------------
+
+                if (
+                    $error === "" &&
+                    $fileSize <= 0
+                ) {
+
+                    $error = "ছবির File Size সঠিক নয়।";
+
+                }
+
+
+                if (
+                    $error === "" &&
+                    $fileSize > $maxSize
+                ) {
+
+                    $error = "ছবির সর্বোচ্চ Size 5MB হতে পারবে।";
+
+                }
 
 
                 // -----------------------------------------
                 // REAL MIME TYPE CHECK
                 // -----------------------------------------
 
-                $finfo = new finfo(FILEINFO_MIME_TYPE);
+                if ($error === "") {
 
-                $mimeType = $finfo->file($tmpName);
+                    $finfo = new finfo(FILEINFO_MIME_TYPE);
 
+                    $mimeType = $finfo->file($tmpName);
 
-                if (!in_array($mimeType, $allowedTypes, true)) {
+                    if (!isset($allowedTypes[$mimeType])) {
 
-                    $error = "শুধু JPG, PNG অথবা WebP ছবি Upload করা যাবে।";
-
-                } elseif ($fileSize > $maxSize) {
-
-                    $error = "ছবির সর্বোচ্চ Size 5MB হতে পারবে।";
-
-                } else {
-
-                    $extensionMap = [
-                        "image/jpeg" => "jpg",
-                        "image/png" => "png",
-                        "image/webp" => "webp"
-                    ];
-
-                    $extension = $extensionMap[$mimeType];
-
-                    $imageName = uniqid("news_", true) . "." . $extension;
-
-                    $uploadDirectory = "../uploads/";
-
-                    if (!is_dir($uploadDirectory)) {
-
-                        mkdir($uploadDirectory, 0755, true);
+                        $error = "শুধু JPG, PNG অথবা WebP ছবি Upload করা যাবে।";
 
                     }
 
-                    $destination = $uploadDirectory . $imageName;
+                }
 
 
-                    if (!move_uploaded_file($tmpName, $destination)) {
+                // -----------------------------------------
+                // CREATE FILE NAME
+                // -----------------------------------------
 
-                        $error = "ছবি Save করা যায়নি।";
+                if ($error === "") {
+
+                    $extension = $allowedTypes[$mimeType];
+
+                    $imageName =
+                        bin2hex(random_bytes(16))
+                        . "."
+                        . $extension;
+
+
+                    // -------------------------------------
+                    // UPLOAD DIRECTORY
+                    // -------------------------------------
+
+                    $uploadDirectory =
+                        dirname(__DIR__) . "/uploads/";
+
+
+                    if (!is_dir($uploadDirectory)) {
+
+                        if (
+                            !mkdir(
+                                $uploadDirectory,
+                                0755,
+                                true
+                            )
+                        ) {
+
+                            $error = "Upload directory তৈরি করা যায়নি।";
+
+                        }
+
+                    }
+
+
+                    // -------------------------------------
+                    // SAVE IMAGE
+                    // -------------------------------------
+
+                    if ($error === "") {
+
+                        $destination =
+                            $uploadDirectory . $imageName;
+
+
+                        if (
+                            !move_uploaded_file(
+                                $tmpName,
+                                $destination
+                            )
+                        ) {
+
+                            $error = "ছবি Save করা যায়নি।";
+
+                        }
 
                     }
 
@@ -196,9 +340,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
 
 
-        // =============================================
+        // =================================================
         // INSERT NEWS
-        // =============================================
+        // =================================================
 
         if ($error === "") {
 
@@ -213,57 +357,101 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
 
 
-            $stmt = $pdo->prepare("
-                INSERT INTO news
-                (
-                    headline,
-                    title,
-                    slug,
-                    category_id,
-                    image,
-                    content,
-                    reporter,
-                    status,
-                    published_at
-                )
-                VALUES
-                (
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?
-                )
-            ");
+            try {
+
+                $stmt = $pdo->prepare("
+                    INSERT INTO news
+                    (
+                        headline,
+                        title,
+                        slug,
+                        category_id,
+                        image,
+                        content,
+                        reporter,
+                        status,
+                        published_at
+                    )
+                    VALUES
+                    (
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?
+                    )
+                ");
 
 
-            $stmt->execute([
-                $headline,
-                $title,
-                $slug,
-                $category_id,
-                $imageName,
-                $content,
-                $reporter,
-                $status,
-                $publishedAt
-            ]);
+                $stmt->execute([
+                    $headline,
+                    $title,
+                    $slug,
+                    $category_id,
+                    $imageName,
+                    $content,
+                    $reporter,
+                    $status,
+                    $publishedAt
+                ]);
 
 
-            $success = "সংবাদ সফলভাবে Save হয়েছে।";
+                // =========================================
+                // SUCCESS
+                // =========================================
+
+                $success = "সংবাদ সফলভাবে Save হয়েছে।";
 
 
-            // Clear form
+                // Clear form
 
-            $title = "";
-            $headline = "";
-            $category_id = 0;
-            $content = "";
-            $reporter = "";
+                $title = "";
+                $headline = "";
+                $category_id = 0;
+                $content = "";
+                $reporter = "";
+                $status = "draft";
+
+
+                // Regenerate CSRF token
+
+                $_SESSION["csrf_token"] =
+                    bin2hex(random_bytes(32));
+
+                $csrfToken =
+                    $_SESSION["csrf_token"];
+
+
+            } catch (PDOException $e) {
+
+                // Delete uploaded image if database insert fails
+
+                if (
+                    $imageName !== "" &&
+                    file_exists(
+                        dirname(__DIR__) .
+                        "/uploads/" .
+                        $imageName
+                    )
+                ) {
+
+                    @unlink(
+                        dirname(__DIR__) .
+                        "/uploads/" .
+                        $imageName
+                    );
+
+                }
+
+
+                $error =
+                    "সংবাদ Save করা যায়নি। Database Error হয়েছে।";
+
+            }
 
         }
 
@@ -286,25 +474,20 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     >
 
     <title>
-        নতুন সংবাদ - <?php echo SITE_NAME; ?>
+        নতুন সংবাদ - <?php echo htmlspecialchars(SITE_NAME); ?>
     </title>
 
     <link
         rel="stylesheet"
-        href="../assets/style.css"
+        href="<?php echo SITE_URL; ?>/assets/style.css"
     >
 
     <style>
-
-        /* =================================================
-           ADMIN
-        ================================================= */
 
         .admin-page {
             min-height: 100vh;
             background: #f4f4f4;
         }
-
 
         .admin-header {
             background: #111;
@@ -312,64 +495,46 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             padding: 18px 0;
         }
 
-
         .admin-header-inner {
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
 
-
         .admin-logo {
             font-size: 24px;
             font-weight: bold;
         }
 
-
         .admin-user {
             font-size: 14px;
         }
-
 
         .admin-user a {
             color: #fff;
             margin-left: 15px;
         }
 
-
         .admin-user a:hover {
             color: #ff4d4d;
         }
-
-
-        /* =================================================
-           CONTENT
-        ================================================= */
 
         .admin-content {
             padding: 35px 0;
         }
 
-
         .admin-title {
             margin-bottom: 25px;
         }
-
 
         .admin-title h1 {
             font-size: 30px;
             margin-bottom: 5px;
         }
 
-
         .admin-title p {
             color: #777;
         }
-
-
-        /* =================================================
-           FORM
-        ================================================= */
 
         .news-form-box {
             background: #fff;
@@ -378,18 +543,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             padding: 30px;
         }
 
-
         .form-group {
             margin-bottom: 20px;
         }
-
 
         .form-group label {
             display: block;
             font-weight: bold;
             margin-bottom: 7px;
         }
-
 
         .form-group input,
         .form-group select,
@@ -400,8 +562,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             border-radius: 5px;
             font-family: inherit;
             font-size: 16px;
+            box-sizing: border-box;
         }
-
 
         .form-group input:focus,
         .form-group select:focus,
@@ -410,12 +572,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             border-color: #b30000;
         }
 
-
         .form-group textarea {
             min-height: 250px;
             resize: vertical;
         }
-
 
         .form-help {
             display: block;
@@ -424,21 +584,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             margin-top: 5px;
         }
 
-
-        /* =================================================
-           GRID
-        ================================================= */
-
         .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
         }
-
-
-        /* =================================================
-           ALERT
-        ================================================= */
 
         .alert {
             padding: 12px 15px;
@@ -446,13 +596,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             margin-bottom: 20px;
         }
 
-
         .alert-error {
             background: #ffe5e5;
             border: 1px solid #ffb3b3;
             color: #a00000;
         }
-
 
         .alert-success {
             background: #e5f8e9;
@@ -460,17 +608,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             color: #176b2c;
         }
 
-
-        /* =================================================
-           BUTTON
-        ================================================= */
-
         .form-actions {
             display: flex;
             gap: 12px;
             align-items: center;
         }
-
 
         .btn {
             display: inline-block;
@@ -483,32 +625,23 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             text-decoration: none;
         }
 
-
         .btn-primary {
             background: #b30000;
             color: #fff;
         }
 
-
         .btn-primary:hover {
             background: #8b0000;
         }
-
 
         .btn-secondary {
             background: #222;
             color: #fff;
         }
 
-
         .btn-secondary:hover {
             background: #444;
         }
-
-
-        /* =================================================
-           MOBILE
-        ================================================= */
 
         @media (max-width: 700px) {
 
@@ -518,23 +651,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 text-align: center;
             }
 
-
             .form-row {
                 grid-template-columns: 1fr;
                 gap: 0;
             }
 
-
             .news-form-box {
                 padding: 20px;
             }
-
 
             .form-actions {
                 flex-direction: column;
                 align-items: stretch;
             }
-
 
             .btn {
                 text-align: center;
@@ -545,7 +674,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     </style>
 
 </head>
-
 
 <body>
 
@@ -562,7 +690,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             <div class="admin-logo">
 
-                <?php echo SITE_NAME; ?> — Admin
+                <?php echo htmlspecialchars(SITE_NAME); ?> — Admin
 
             </div>
 
@@ -573,11 +701,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
                 |
 
-                <a href="index.php">
+                <a href="<?php echo SITE_URL; ?>/admin/index.php">
                     Dashboard
                 </a>
 
-                <a href="logout.php">
+                <a href="<?php echo SITE_URL; ?>/admin/news-list.php">
+                    সকল সংবাদ
+                </a>
+
+                <a href="<?php echo SITE_URL; ?>/admin/logout.php">
                     Logout
                 </a>
 
@@ -648,6 +780,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     enctype="multipart/form-data"
                 >
 
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="<?php echo htmlspecialchars($csrfToken); ?>"
+                    >
+
 
                     <!-- TITLE + CATEGORY -->
 
@@ -664,7 +802,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                                 type="text"
                                 id="title"
                                 name="title"
-                                value="<?php echo htmlspecialchars($title ?? ""); ?>"
+                                value="<?php echo htmlspecialchars($title); ?>"
                                 placeholder="সংবাদের মূল শিরোনাম"
                                 required
                             >
@@ -692,11 +830,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                                 <?php foreach ($categories as $category): ?>
 
                                     <option
-                                        value="<?php echo $category["id"]; ?>"
+                                        value="<?php echo (int)$category["id"]; ?>"
                                         <?php
                                         echo (
-                                            ($category_id ?? 0)
-                                            == $category["id"]
+                                            $category_id == $category["id"]
                                         )
                                         ? "selected"
                                         : "";
@@ -729,7 +866,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                             type="text"
                             id="headline"
                             name="headline"
-                            value="<?php echo htmlspecialchars($headline ?? ""); ?>"
+                            value="<?php echo htmlspecialchars($headline); ?>"
                             placeholder="সংবাদের সংক্ষিপ্ত Headline"
                         >
 
@@ -771,7 +908,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                             name="content"
                             placeholder="এখানে বিস্তারিত সংবাদ লিখুন..."
                             required
-                        ><?php echo htmlspecialchars($content ?? ""); ?></textarea>
+                        ><?php echo htmlspecialchars($content); ?></textarea>
 
                     </div>
 
@@ -791,7 +928,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                                 type="text"
                                 id="reporter"
                                 name="reporter"
-                                value="<?php echo htmlspecialchars($reporter ?? ""); ?>"
+                                value="<?php echo htmlspecialchars($reporter); ?>"
                                 placeholder="সাংবাদিকের নাম"
                             >
 
@@ -809,11 +946,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                                 name="status"
                             >
 
-                                <option value="draft">
+                                <option
+                                    value="draft"
+                                    <?php echo $status === "draft" ? "selected" : ""; ?>
+                                >
                                     Draft
                                 </option>
 
-                                <option value="published">
+                                <option
+                                    value="published"
+                                    <?php echo $status === "published" ? "selected" : ""; ?>
+                                >
                                     Published
                                 </option>
 
@@ -838,10 +981,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
 
                         <a
-                            href="index.php"
+                            href="<?php echo SITE_URL; ?>/admin/index.php"
                             class="btn btn-secondary"
                         >
                             Dashboard
+                        </a>
+
+
+                        <a
+                            href="<?php echo SITE_URL; ?>/admin/news-list.php"
+                            class="btn btn-secondary"
+                        >
+                            সকল সংবাদ
                         </a>
 
                     </div>

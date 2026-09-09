@@ -2,8 +2,8 @@
 
 session_start();
 
-require_once "../config/config.php";
-require_once "../config/database.php";
+require_once dirname(__DIR__) . "/config/config.php";
+require_once dirname(__DIR__) . "/config/database.php";
 
 
 // =====================================================
@@ -12,7 +12,7 @@ require_once "../config/database.php";
 
 if (!isset($_SESSION["admin_id"])) {
 
-    header("Location: login.php");
+    header("Location: " . SITE_URL . "/admin/login.php");
 
     exit;
 }
@@ -64,7 +64,10 @@ if (
 
     if ($deleteId) {
 
-        // First find image
+        // ---------------------------------------------
+        // FIND IMAGE
+        // ---------------------------------------------
+
         $imageStmt = $pdo->prepare("
             SELECT image
             FROM news
@@ -79,7 +82,10 @@ if (
         $newsToDelete = $imageStmt->fetch();
 
 
-        // Delete database row
+        // ---------------------------------------------
+        // DELETE DATABASE ROW
+        // ---------------------------------------------
+
         $deleteStmt = $pdo->prepare("
             DELETE FROM news
             WHERE id = ?
@@ -90,14 +96,18 @@ if (
         ]);
 
 
-        // Delete image file
+        // ---------------------------------------------
+        // DELETE IMAGE FILE
+        // ---------------------------------------------
+
         if (
             $newsToDelete
             && !empty($newsToDelete["image"])
         ) {
 
             $imagePath =
-                "../uploads/"
+                dirname(__DIR__)
+                . "/uploads/"
                 . basename($newsToDelete["image"]);
 
 
@@ -113,7 +123,7 @@ if (
 
 
     header(
-        "Location: news-list.php?deleted=1"
+        "Location: " . SITE_URL . "/admin/news-list.php?deleted=1"
     );
 
     exit;
@@ -171,7 +181,10 @@ $sql = "
 $params = [];
 
 
-// Search
+// =====================================================
+// SEARCH
+// =====================================================
+
 if ($search !== "") {
 
     $sql .= "
@@ -190,7 +203,10 @@ if ($search !== "") {
 }
 
 
-// Category
+// =====================================================
+// CATEGORY
+// =====================================================
+
 if ($categoryId) {
 
     $sql .= "
@@ -201,7 +217,10 @@ if ($categoryId) {
 }
 
 
-// Status
+// =====================================================
+// STATUS
+// =====================================================
+
 if (
     $status === "published"
     || $status === "draft"
@@ -214,6 +233,10 @@ if (
     $params[] = $status;
 }
 
+
+// =====================================================
+// ORDER
+// =====================================================
 
 $sql .= "
     ORDER BY
@@ -267,12 +290,7 @@ function e($value)
         href="<?php echo SITE_URL; ?>/assets/style.css"
     >
 
-
     <style>
-
-        /* =================================================
-           ADMIN PAGE
-        ================================================= */
 
         body {
             margin: 0;
@@ -382,10 +400,6 @@ function e($value)
         }
 
 
-        /* =================================================
-           SUCCESS
-        ================================================= */
-
         .success-message {
 
             background: #e8f7e8;
@@ -402,10 +416,6 @@ function e($value)
 
         }
 
-
-        /* =================================================
-           FILTER
-        ================================================= */
 
         .filter-box {
 
@@ -510,10 +520,6 @@ function e($value)
 
         }
 
-
-        /* =================================================
-           TABLE
-        ================================================= */
 
         .news-table-box {
 
@@ -640,10 +646,6 @@ function e($value)
         }
 
 
-        /* =================================================
-           STATUS
-        ================================================= */
-
         .status {
 
             display: inline-block;
@@ -676,10 +678,6 @@ function e($value)
 
         }
 
-
-        /* =================================================
-           ACTIONS
-        ================================================= */
 
         .action-buttons {
 
@@ -728,10 +726,6 @@ function e($value)
         }
 
 
-        /* =================================================
-           EMPTY
-        ================================================= */
-
         .empty-state {
 
             text-align: center;
@@ -751,10 +745,6 @@ function e($value)
 
         }
 
-
-        /* =================================================
-           MOBILE
-        ================================================= */
 
         @media (max-width: 800px) {
 
@@ -817,7 +807,7 @@ function e($value)
 
 
             <a
-                href="add-news.php"
+                href="<?php echo SITE_URL; ?>/admin/add-news.php"
                 class="admin-btn btn-add"
             >
                 + সংবাদ যোগ করুন
@@ -825,7 +815,7 @@ function e($value)
 
 
             <a
-                href="logout.php"
+                href="<?php echo SITE_URL; ?>/admin/logout.php"
                 class="admin-btn btn-logout"
             >
                 Logout
@@ -859,7 +849,7 @@ function e($value)
 
         <form
             method="GET"
-            action="news-list.php"
+            action="<?php echo SITE_URL; ?>/admin/news-list.php"
             class="filter-form"
         >
 
@@ -911,11 +901,7 @@ function e($value)
                             ?>
                         >
 
-                            <?php
-                            echo e(
-                                $category["name"]
-                            );
-                            ?>
+                            <?php echo e($category["name"]); ?>
 
                         </option>
 
@@ -985,7 +971,7 @@ function e($value)
 
 
                 <a
-                    href="news-list.php"
+                    href="<?php echo SITE_URL; ?>/admin/news-list.php"
                     class="reset-link"
                 >
                     Reset
@@ -1086,11 +1072,7 @@ function e($value)
 
                                 <div class="news-title">
 
-                                    <?php
-                                    echo e(
-                                        $news["title"]
-                                    );
-                                    ?>
+                                    <?php echo e($news["title"]); ?>
 
                                 </div>
 
@@ -1218,7 +1200,7 @@ function e($value)
 
 
                                     <a
-                                        href="edit-news.php?id=<?php echo (int)$news["id"]; ?>"
+                                        href="<?php echo SITE_URL; ?>/admin/edit-news.php?id=<?php echo (int)$news["id"]; ?>"
                                         class="edit-btn"
                                     >
                                         Edit
@@ -1227,7 +1209,7 @@ function e($value)
 
                                     <form
                                         method="POST"
-                                        action="news-list.php"
+                                        action="<?php echo SITE_URL; ?>/admin/news-list.php"
                                         onsubmit="return confirm('আপনি কি নিশ্চিত যে এই সংবাদটি মুছে ফেলতে চান?');"
                                         style="margin:0;"
                                     >
