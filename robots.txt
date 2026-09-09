@@ -4,6 +4,5 @@ Allow: /
 Disallow: /admin/
 Disallow: /config/
 Disallow: /includes/
-Disallow: /uploads/
 
-Sitemap: http://localhost/fulchari-somachar/sitemap.xml
+Sitemap: https://fulchari-somachar.vercel.app/sitemap.xml
