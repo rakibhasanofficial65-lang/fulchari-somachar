@@ -39,7 +39,6 @@ if (!function_exists("e")) {
 ?>
 
 <!DOCTYPE html>
-
 <html lang="bn">
 
 <head>
@@ -56,14 +55,11 @@ if (!function_exists("e")) {
         content="#111111"
     >
 
-
     <!-- =================================================
          BASIC SEO
     ================================================= -->
 
-    <title>
-        <?php echo e($pageTitle); ?>
-    </title>
+    <title><?php echo e($pageTitle); ?></title>
 
     <meta
         name="description"
@@ -79,7 +75,6 @@ if (!function_exists("e")) {
         rel="canonical"
         href="<?php echo e($canonicalUrl); ?>"
     >
-
 
     <!-- =================================================
          OPEN GRAPH
@@ -120,7 +115,6 @@ if (!function_exists("e")) {
         content="<?php echo e($ogImage); ?>"
     >
 
-
     <!-- =================================================
          TWITTER CARD
     ================================================= -->
@@ -145,16 +139,14 @@ if (!function_exists("e")) {
         content="<?php echo e($ogImage); ?>"
     >
 
-
     <!-- =================================================
          STYLESHEET
     ================================================= -->
 
     <link
         rel="stylesheet"
-        href="<?php echo SITE_URL; ?>/assets/style.css"
+        href="<?php echo e(SITE_URL); ?>/assets/style.css"
     >
-
 
     <!-- =================================================
          FAVICON
@@ -163,23 +155,7 @@ if (!function_exists("e")) {
     <link
         rel="icon"
         type="image/png"
-        href="<?php echo SITE_URL; ?>/assets/logo.png"
-    >
-
-
-    <!-- =================================================
-         PRECONNECT
-    ================================================= -->
-
-    <link
-        rel="preconnect"
-        href="https://fonts.googleapis.com"
-    >
-
-    <link
-        rel="preconnect"
-        href="https://fonts.gstatic.com"
-        crossorigin
+        href="<?php echo e(SITE_URL); ?>/assets/logo.png"
     >
 
 </head>
@@ -196,19 +172,28 @@ if (!function_exists("e")) {
 
     <div class="container">
 
-        <div class="site-logo">
+        <div class="header-inner">
 
-            <a
-                href="<?php echo SITE_URL; ?>/"
-                aria-label="<?php echo e(SITE_NAME); ?>"
-            >
+            <div class="logo-area">
 
-                <img
-                    src="<?php echo SITE_URL; ?>/assets/logo.png"
-                    alt="<?php echo e(SITE_NAME); ?>"
+                <a
+                    href="<?php echo e(SITE_URL); ?>/"
+                    class="logo"
+                    aria-label="<?php echo e(SITE_NAME); ?>"
                 >
 
-            </a>
+                    <img
+                        src="<?php echo e(SITE_URL); ?>/assets/logo.png"
+                        alt="<?php echo e(SITE_NAME); ?>"
+                    >
+
+                </a>
+
+                <div class="tagline">
+                    ফুলছড়ি, গাইবান্ধা ও দেশের সর্বশেষ সংবাদ
+                </div>
+
+            </div>
 
         </div>
 
