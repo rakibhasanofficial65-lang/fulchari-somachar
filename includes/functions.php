@@ -568,4 +568,4 @@ if (!function_exists("get_category_by_slug")) {
         return $category ?: null;
     }
 
-}s
+}
