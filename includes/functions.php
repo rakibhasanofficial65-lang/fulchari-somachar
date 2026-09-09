@@ -129,7 +129,6 @@ if (!function_exists("image_url")) {
             return site_url("assets/logo.png");
         }
 
-        // Already an absolute URL
         if (
             preg_match(
                 '#^https?://#i',
@@ -148,7 +147,7 @@ if (!function_exists("image_url")) {
 
 
 // =====================================================
-// DATE FORMAT
+// BANGLA DATE FORMAT
 // =====================================================
 
 if (!function_exists("format_date_bn")) {
