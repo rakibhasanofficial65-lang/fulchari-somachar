@@ -1,112 +1,178 @@
 <?php
 
-require_once "config/database.php";
-require_once "config/config.php";
+require_once __DIR__ . "/config/config.php";
+require_once __DIR__ . "/config/database.php";
 
 header("Content-Type: application/xml; charset=utf-8");
 
-function xmlEscape($value)
+
+// =====================================================
+// XML ESCAPE
+// =====================================================
+
+function xml_escape($value)
 {
     return htmlspecialchars(
-        $value,
+        (string) $value,
         ENT_XML1 | ENT_QUOTES,
         "UTF-8"
     );
 }
 
+
+// =====================================================
+// SAFE LASTMOD
+// =====================================================
+
+function sitemap_lastmod($date)
+{
+    if (empty($date)) {
+        return date("c");
+    }
+
+    $timestamp = strtotime($date);
+
+    if ($timestamp === false) {
+        return date("c");
+    }
+
+    return date("c", $timestamp);
+}
+
+
+// =====================================================
+// BASE URL
+// =====================================================
+
 $baseUrl = rtrim(SITE_URL, "/");
+
+
+// =====================================================
+// URL COLLECTION
+// =====================================================
 
 $urls = [];
 
-/*
-|--------------------------------------------------------------------------
-| Homepage
-|--------------------------------------------------------------------------
-*/
-$urls[] = [
+
+// =====================================================
+// HOMEPAGE
+// =====================================================
+
+$urls[$baseUrl . "/"] = [
     "loc" => $baseUrl . "/",
     "lastmod" => date("c")
 ];
 
-/*
-|--------------------------------------------------------------------------
-| Category URLs
-|--------------------------------------------------------------------------
-*/
+
+// =====================================================
+// CATEGORY URLS
+// =====================================================
+
 $stmt = $pdo->query("
-    SELECT slug
+    SELECT
+        slug
     FROM categories
+    WHERE slug IS NOT NULL
+      AND slug <> ''
     ORDER BY id ASC
 ");
 
-$categories = $stmt->fetchAll();
+$categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 foreach ($categories as $category) {
 
-    $urls[] = [
-        "loc" => $baseUrl . "/category/" . rawurlencode($category["slug"]),
+    $slug = trim($category["slug"]);
+
+    if ($slug === "") {
+        continue;
+    }
+
+    $url =
+        $baseUrl .
+        "/category/" .
+        rawurlencode($slug);
+
+    $urls[$url] = [
+        "loc" => $url,
         "lastmod" => date("c")
     ];
 }
 
-/*
-|--------------------------------------------------------------------------
-| Published News URLs
-|--------------------------------------------------------------------------
-*/
+
+// =====================================================
+// PUBLISHED NEWS URLS
+// =====================================================
+
 $stmt = $pdo->query("
-    SELECT slug, updated_at, published_at
+    SELECT
+        slug,
+        updated_at,
+        published_at
     FROM news
     WHERE status = 'published'
-    ORDER BY published_at DESC
+      AND slug IS NOT NULL
+      AND slug <> ''
+    ORDER BY
+        published_at DESC,
+        id DESC
 ");
 
-$newsList = $stmt->fetchAll();
+$newsList = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 foreach ($newsList as $news) {
 
-    $lastmod = !empty($news["updated_at"])
-        ? $news["updated_at"]
-        : $news["published_at"];
+    $slug = trim($news["slug"]);
 
-    $urls[] = [
-        "loc" => $baseUrl . "/news/" . rawurlencode($news["slug"]),
-        "lastmod" => date("c", strtotime($lastmod))
+    if ($slug === "") {
+        continue;
+    }
+
+    $url =
+        $baseUrl .
+        "/news/" .
+        rawurlencode($slug);
+
+    $lastmodDate =
+        !empty($news["updated_at"])
+            ? $news["updated_at"]
+            : $news["published_at"];
+
+    $urls[$url] = [
+        "loc" => $url,
+        "lastmod" => sitemap_lastmod($lastmodDate)
     ];
 }
 
-/*
-|--------------------------------------------------------------------------
-| E-Paper
-|--------------------------------------------------------------------------
-*/
-$urls[] = [
-    "loc" => $baseUrl . "/epaper",
+
+// =====================================================
+// E-PAPER
+// =====================================================
+
+$epaperUrl = $baseUrl . "/epaper";
+
+$urls[$epaperUrl] = [
+    "loc" => $epaperUrl,
     "lastmod" => date("c")
 ];
 
-/*
-|--------------------------------------------------------------------------
-| XML Output
-|--------------------------------------------------------------------------
-*/
+
+// =====================================================
+// XML HEADER
+// =====================================================
+
 echo '<?xml version="1.0" encoding="UTF-8"?>';
+
 ?>
 
-<urlset
-    xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
 <?php foreach ($urls as $url): ?>
 
     <url>
 
-        <loc>
-            <?php echo xmlEscape($url["loc"]); ?>
-        </loc>
+        <loc><?php echo xml_escape($url["loc"]); ?></loc>
 
-        <lastmod>
-            <?php echo xmlEscape($url["lastmod"]); ?>
-        </lastmod>
+        <lastmod><?php echo xml_escape($url["lastmod"]); ?></lastmod>
 
     </url>
 
